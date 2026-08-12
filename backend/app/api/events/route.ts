@@ -58,7 +58,15 @@ export async function POST(request: NextRequest) {
         startAt: input.startAt,
         endAt: input.endAt,
         organizerId: user.id,
-        ticketTypes: { create: input.ticketTypes },
+        ticketTypes: {
+  create: input.ticketTypes.map((ticketType) => ({
+    name: ticketType.name,
+    description: ticketType.description,
+    priceKobo: ticketType.priceKobo,
+    quantity: ticketType.quantity,
+    quantityRemaining: ticketType.quantity,
+  })),
+},
       },
       include: { ticketTypes: true },
     });
