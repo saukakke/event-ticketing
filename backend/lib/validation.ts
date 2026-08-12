@@ -18,7 +18,7 @@ const ticketTypeSchema = z.object({
   quantity: z.number().int().min(1).max(1_000_000),
 });
 
-export const createEventSchema = z.object({
+const eventBaseSchema = z.object({
   title: z.string().trim().min(3).max(160),
   description: z.string().trim().min(20).max(5000),
   venue: z.string().trim().min(2).max(160),
@@ -26,12 +26,32 @@ export const createEventSchema = z.object({
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),
   ticketTypes: z.array(ticketTypeSchema).min(1).max(20),
-}).refine((value) => value.endAt > value.startAt, {
-  message: "End time must be after start time.",
-  path: ["endAt"],
 });
 
-export const updateEventSchema = createEventSchema.partial().omit({ ticketTypes: true });
+export const createEventSchema = eventBaseSchema.refine(
+  (value) => value.endAt > value.startAt,
+  {
+    message: "End time must be after start time.",
+    path: ["endAt"],
+  }
+);
+
+export const updateEventSchema = eventBaseSchema
+  .omit({ ticketTypes: true })
+  .partial()
+  .refine(
+    (value) => {
+      if (value.startAt && value.endAt) {
+        return value.endAt > value.startAt;
+      }
+
+      return true;
+    },
+    {
+      message: "End time must be after start time.",
+      path: ["endAt"],
+    }
+  );
 
 export const orderSchema = z.object({
   eventId: z.string().min(1),
