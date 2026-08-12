@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "description": "3MTT Capstone full-stack event ticketing platform",
   "workspaces": ["frontend", "backend"],
+  "engines": {
+  "node": "22.x"
+  }
   "scripts": {
     "dev": "concurrently -k \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
     "build": "npm run build --workspace backend && npm run build --workspace frontend",
