@@ -125,9 +125,9 @@ Backend:
 
 Seed data creates:
 
-- Organizer: `organizer@eventflow.local`
-- Attendee: `attendee@eventflow.local`
-- Admin: `admin@eventflow.local`
+- Organizer: `organizer@eventflow.com`
+- Attendee: `attendee@eventflow.com`
+- Admin: `admin@eventflow.com`
 
 All seeded users use the development password:
 
