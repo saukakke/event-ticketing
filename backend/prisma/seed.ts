@@ -7,21 +7,21 @@ async function main() {
   const passwordHash = await bcrypt.hash("Password123!", 12);
 
   const organizer = await prisma.user.upsert({
-    where: { email: "organizer@eventflow.local" },
+    where: { email: "organizer@eventflow.com" },
     update: { passwordHash, role: UserRole.ORGANIZER, name: "EventFlow Organizer" },
-    create: { email: "organizer@eventflow.local", passwordHash, role: UserRole.ORGANIZER, name: "EventFlow Organizer" },
+    create: { email: "organizer@eventflow.com", passwordHash, role: UserRole.ORGANIZER, name: "EventFlow Organizer" },
   });
 
   await prisma.user.upsert({
-    where: { email: "attendee@eventflow.local" },
+    where: { email: "attendee@eventflow.com" },
     update: { passwordHash, role: UserRole.ATTENDEE, name: "Demo Attendee" },
-    create: { email: "attendee@eventflow.local", passwordHash, role: UserRole.ATTENDEE, name: "Demo Attendee" },
+    create: { email: "attendee@eventflow.com", passwordHash, role: UserRole.ATTENDEE, name: "Demo Attendee" },
   });
 
   await prisma.user.upsert({
-    where: { email: "admin@eventflow.local" },
+    where: { email: "admin@eventflow.com" },
     update: { passwordHash, role: UserRole.ADMIN, name: "EventFlow Admin" },
-    create: { email: "admin@eventflow.local", passwordHash, role: UserRole.ADMIN, name: "EventFlow Admin" },
+    create: { email: "admin@eventflow.com", passwordHash, role: UserRole.ADMIN, name: "EventFlow Admin" },
   });
 
   const existing = await prisma.event.findFirst({ where: { organizerId: organizer.id } });
