@@ -14,7 +14,7 @@ type Order = {
 };
 
 type OrdersResponse = {
-  data: Order[];
+  orders: Order[];
   pagination: { page: number; pageSize: number; total: number; pages: number };
 };
 
@@ -37,7 +37,6 @@ export default function AdminOrders() {
 
   useEffect(() => {
     let cancelled = false;
-
     const initialLoad = async () => {
       try {
         const response = await api<OrdersResponse>("/admin/orders?page=1&pageSize=50");
@@ -46,11 +45,8 @@ export default function AdminOrders() {
         if (!cancelled) setError(error instanceof Error ? error.message : "Unable to load orders.");
       }
     };
-
     void initialLoad();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   async function verifyPayment(order: Order) {
@@ -58,16 +54,12 @@ export default function AdminOrders() {
       setError("This order has no Paystack payment reference and cannot be verified.");
       return;
     }
-
     setVerifying(order.id);
     setError("");
     setMessage("");
-
     try {
-      const response = await api<{ data: Order; message?: string }>(`/admin/orders/${order.id}/verify-payment`, {
-        method: "POST",
-      });
-      setMessage(response.message || "Payment verified and order marked as paid. Tickets have been issued.");
+      await api<Order>(`/admin/orders/${order.id}/verify-payment`, { method: "POST" });
+      setMessage("Payment verified and order marked as paid. Tickets have been issued.");
       await load();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Payment verification failed.");
@@ -78,59 +70,16 @@ export default function AdminOrders() {
 
   return (
     <main className="container section">
-      <div className="dashboard-head">
-        <div>
-          <div className="eyebrow">Administration</div>
-          <h1>Orders</h1>
-          <p className="meta">Verify pending Paystack payments before issuing tickets.</p>
-        </div>
-      </div>
-
-      <input
-        className="input"
-        placeholder="Search order, customer or event"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onKeyDown={(event) => { if (event.key === "Enter") void load(); }}
-      />
-
+      <div className="dashboard-head"><div><div className="eyebrow">Administration</div><h1>Orders</h1><p className="meta">Verify pending Paystack payments before issuing tickets.</p></div></div>
+      <input className="input" placeholder="Search order, customer or event" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void load(); }} />
       {message && <div className="empty" style={{ marginTop: "1rem" }}><p>{message}</p></div>}
       {error && <div className="empty" style={{ marginTop: "1rem" }}><h2>Payment verification failed</h2><p>{error}</p></div>}
-
       <div className="table-wrap" style={{ marginTop: "1.5rem" }}>
-        <table>
-          <thead>
-            <tr><th>Order</th><th>Customer</th><th>Event</th><th>Status</th><th>Amount</th><th>Payment</th><th>Date</th><th>Action</th></tr>
-          </thead>
-          <tbody>
-            {data?.data.map((order) => (
-              <tr key={order.id}>
-                <td>{order.id}</td>
-                <td>{order.user.name}<div className="meta">{order.user.email}</div></td>
-                <td>{order.event.title}</td>
-                <td>{order.status}</td>
-                <td>{formatNaira(order.totalKobo)}</td>
-                <td>{order.paymentReference || "—"}</td>
-                <td>{formatDate(order.createdAt)}</td>
-                <td>
-                  {order.status === "PENDING" && order.paymentReference ? (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={verifying === order.id}
-                      onClick={() => void verifyPayment(order)}
-                    >
-                      {verifying === order.id ? "Verifying…" : "Verify & mark paid"}
-                    </button>
-                  ) : order.status === "PENDING" ? (
-                    <span className="meta">No payment reference</span>
-                  ) : (
-                    <span className="meta">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
+        <table><thead><tr><th>Order</th><th>Customer</th><th>Event</th><th>Status</th><th>Amount</th><th>Payment</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody>{data?.orders.map((order) => <tr key={order.id}>
+            <td>{order.id}</td><td>{order.user.name}<div className="meta">{order.user.email}</div></td><td>{order.event.title}</td><td>{order.status}</td><td>{formatNaira(order.totalKobo)}</td><td>{order.paymentReference || "—"}</td><td>{formatDate(order.createdAt)}</td>
+            <td>{order.status === "PENDING" && order.paymentReference ? <button type="button" className="btn btn-primary" disabled={verifying === order.id} onClick={() => void verifyPayment(order)}>{verifying === order.id ? "Verifying…" : "Verify & mark paid"}</button> : order.status === "PENDING" ? <span className="meta">No payment reference</span> : <span className="meta">—</span>}</td>
+          </tr>)}</tbody>
         </table>
       </div>
     </main>
