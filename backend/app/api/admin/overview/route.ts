@@ -1,4 +1,57 @@
-"use client";
-import { useEffect, useState } from "react";
-import { api, formatDate, formatNaira } from "@/lib/api";
-export default function AdminPage(){const [data,setData]=useState<any>();const [error,setError]=useState("");useEffect(()=>{api<any>("/admin/overview").then(setData).catch(e=>setError(e.message))},[]);if(error)return <main className="container section"><div className="empty"><h2>Admin access required</h2><p>{error}</p></div></main>;if(!data)return <main className="container section"><p>Loading admin dashboard…</p></main>;const m=data.metrics;return <main className="dashboard"><div className="container"><div className="dashboard-head"><div><div className="eyebrow">Administration</div><h1 style={{fontSize:"3rem"}}>Platform overview</h1></div></div><div className="stats"><div className="stat"><span className="meta">Users</span><strong>{m.users}</strong></div><div className="stat"><span className="meta">Organizers</span><strong>{m.organizers}</strong></div><div className="stat"><span className="meta">Events</span><strong>{m.events}</strong></div><div className="stat"><span className="meta">Orders</span><strong>{m.orders}</strong></div><div className="stat"><span className="meta">Tickets</span><strong>{m.tickets}</strong></div><div className="stat"><span className="meta">Gross revenue</span><strong>{formatNaira(m.grossRevenueKobo)}</strong></div><div className="stat"><span className="meta">Refunded</span><strong>{formatNaira(m.refundedKobo)}</strong></div><div className="stat"><span className="meta">Net revenue</span><strong>{formatNaira(m.netRevenueKobo)}</strong></div></div><div className="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Event</th><th>Status</th><th>Amount</th><th>Date</th></tr></thead><tbody>{data.recentOrders.map((o:any)=><tr key={o.id}><td>{o.id}</td><td>{o.user.name}<div className="meta">{o.user.email}</div></td><td>{o.event.title}</td><td>{o.status}</td><td>{formatNaira(o.totalKobo)}</td><td>{formatDate(o.createdAt)}</td></tr>)}</tbody></table></div></div></main>}
+import { getAuthUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { errorResponse, handleError, ok } from "@/lib/http";
+
+export async function GET() {
+  try {
+    const user = await getAuthUser();
+    if (!user) return errorResponse("UNAUTHENTICATED", "Sign in required.", 401);
+    if (user.role !== "ADMIN") return errorResponse("FORBIDDEN", "Admin access required.", 403);
+
+    const [
+      users,
+      organizers,
+      events,
+      orders,
+      tickets,
+      paidRevenue,
+      refundedRevenue,
+      recentOrders,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: "ORGANIZER" } }),
+      prisma.event.count(),
+      prisma.order.count(),
+      prisma.ticket.count(),
+      prisma.order.aggregate({ where: { status: "PAID" }, _sum: { totalKobo: true } }),
+      prisma.refund.aggregate({ where: { status: "PROCESSED" }, _sum: { amountKobo: true } }),
+      prisma.order.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          event: { select: { id: true, title: true } },
+        },
+      }),
+    ]);
+
+    const grossRevenueKobo = paidRevenue._sum.totalKobo ?? 0;
+    const refundedKobo = refundedRevenue._sum.amountKobo ?? 0;
+
+    return ok({
+      metrics: {
+        users,
+        organizers,
+        events,
+        orders,
+        tickets,
+        grossRevenueKobo,
+        refundedKobo,
+        netRevenueKobo: Math.max(grossRevenueKobo - refundedKobo, 0),
+      },
+      recentOrders,
+    });
+  } catch (error) {
+    return handleError(error);
+  }
+}
