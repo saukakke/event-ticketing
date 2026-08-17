@@ -7,6 +7,18 @@ function getServerApiBase() {
   return `${BACKEND_URL.replace(/\/$/, "")}/api`;
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const headers = new Headers(options.headers);
@@ -28,7 +40,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : null;
   if (!response.ok) {
-    throw new Error(payload?.error?.message || `The server returned an error (${response.status}). Please try again.`);
+    const message = payload?.error?.message || `The server returned an error (${response.status}). Please try again.`;
+    throw new ApiError(message, response.status, payload?.error?.code);
   }
   if (!payload || !("data" in payload)) throw new Error("The server returned an invalid response.");
   return payload.data as T;
