@@ -10,11 +10,10 @@ export async function POST(request: NextRequest) {
     const input = loginSchema.parse(await request.json());
     const user = await prisma.user.findUnique({
       where: { email: input.email },
-      select: { id: true, name: true, email: true, passwordHash: true, role: true, suspendedAt: true, suspensionReason: true, deletedAt: true },
+      select: { id: true, name: true, email: true, passwordHash: true, role: true },
     });
 
-    if (!user || user.deletedAt) return errorResponse("INVALID_CREDENTIALS", "Email or password is incorrect.", 401);
-    if (user.suspendedAt) return errorResponse("ACCOUNT_SUSPENDED", user.suspensionReason ? `This account is suspended: ${user.suspensionReason}` : "This account is suspended.", 403);
+    if (!user) return errorResponse("INVALID_CREDENTIALS", "Email or password is incorrect.", 401);
 
     const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
     if (!passwordMatches) return errorResponse("INVALID_CREDENTIALS", "Email or password is incorrect.", 401);
