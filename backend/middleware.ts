@@ -3,18 +3,30 @@ import { NextRequest, NextResponse } from "next/server";
 const allowedMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const allowedHeaders = "Content-Type, Authorization";
 const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const FRONTEND_URL = "https://event-ticketing-x3og.onrender.com";
+
+function getConfiguredOrigins() {
+  return (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((value) => value.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
 
 function getAllowedOrigin(request: NextRequest): string | null {
   const origin = request.headers.get("origin");
   if (!origin) return null;
-  if (origin === FRONTEND_URL) return origin;
+
+  const configuredOrigins = getConfiguredOrigins();
+  if (configuredOrigins.includes(origin)) return origin;
+
   if (process.env.NODE_ENV !== "production") {
     try {
       const url = new URL(origin);
       if (url.hostname === "localhost" || url.hostname === "127.0.0.1") return origin;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
+
   return null;
 }
 
@@ -39,14 +51,24 @@ export function middleware(request: NextRequest) {
 
   if (request.method === "OPTIONS") {
     if (origin && !allowedOrigin && !webhook) {
-      return NextResponse.json({ error: { code: "FORBIDDEN_ORIGIN", message: "Request origin is not allowed." } }, { status: 403 });
+      return NextResponse.json(
+        { error: { code: "FORBIDDEN_ORIGIN", message: "Request origin is not allowed." } },
+        { status: 403 },
+      );
     }
     return addCorsHeaders(new NextResponse(null, { status: 204 }), allowedOrigin);
   }
 
   if (stateChangingMethods.has(request.method) && !webhook && origin && !allowedOrigin) {
-    return addCorsHeaders(NextResponse.json({ error: { code: "FORBIDDEN_ORIGIN", message: "Request origin is not allowed." } }, { status: 403 }), null);
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: { code: "FORBIDDEN_ORIGIN", message: "Request origin is not allowed." } },
+        { status: 403 },
+      ),
+      null,
+    );
   }
+
   return addCorsHeaders(NextResponse.next(), allowedOrigin);
 }
 
