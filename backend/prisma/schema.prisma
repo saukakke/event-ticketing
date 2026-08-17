@@ -55,7 +55,6 @@ model User {
   auditLogs        AuditLog[]
   refundsRequested Refund[]  @relation("RefundRequestedBy")
 
-  @@index([role])
   @@index([role, suspendedAt])
   @@index([deletedAt])
 }
@@ -147,7 +146,6 @@ model Ticket {
   checkedIn    Boolean      @default(false)
   checkedInAt  DateTime?
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
   order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
   ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
