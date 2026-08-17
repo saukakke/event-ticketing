@@ -1,4 +1,4 @@
-const API_BASE = "https://event-ticketing-backend-yzzr.onrender.com/api";
+const API_BASE = "https://event-ticketing-backend-yzzr.onrender.com";
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -6,7 +6,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${normalizedPath}`, { ...options, credentials: "include", headers, cache: "no-store" });
+    response = await fetch(`${API_BASE}/api${normalizedPath}`, { ...options, credentials: "include", headers, cache: "no-store" });
   } catch {
     throw new Error("Unable to reach the EventFlow server. Please check that the backend is running and the application is configured correctly.");
   }
