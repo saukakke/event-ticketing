@@ -1,13 +1,19 @@
 import { EventCard } from "@/components/event-card";
-import { api, Event } from "@/lib/api";
+import { api, ApiError, Event } from "@/lib/api";
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
   const q = params.q ? `&q=${encodeURIComponent(params.q)}` : "";
   let events: Event[] = [];
+  let loadError = "";
+
   try {
     events = (await api<{ events: Event[] }>(`/events?limit=30${q}`)).events;
-  } catch {}
+  } catch (error) {
+    loadError = error instanceof ApiError
+      ? error.message
+      : "Unable to load events. Please try again shortly.";
+  }
 
   return (
     <main className="section">
@@ -19,7 +25,13 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           <input name="q" defaultValue={params.q} placeholder="Search events or venues" aria-label="Search events" style={{ flex: 1, minHeight: 46, border: "1px solid var(--line)", borderRadius: 12, padding: "0 14px" }} />
           <button className="btn btn-primary" type="submit">Search</button>
         </form>
-        {events.length ? <div className="grid">{events.map((event, i) => <EventCard key={event.id} event={event} index={i} />)}</div> : <div className="empty">No matching events found.</div>}
+        {loadError ? (
+          <div className="empty" role="alert"><h2>Unable to load events</h2><p>{loadError}</p></div>
+        ) : events.length ? (
+          <div className="grid">{events.map((event, i) => <EventCard key={event.id} event={event} index={i} />)}</div>
+        ) : (
+          <div className="empty">No matching events found.</div>
+        )}
       </div>
     </main>
   );
