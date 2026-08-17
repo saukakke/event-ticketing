@@ -4,20 +4,8 @@
   "version": "1.0.0",
   "description": "3MTT Capstone full-stack event ticketing platform",
   "workspaces": ["frontend", "backend"],
-  "engines": {
-  "node": "22.x"
-  },
-  "scripts": {
-    "dev": "concurrently -k \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
-    "build": "npm run build --workspace backend && npm run build --workspace frontend",
-    "start": "concurrently -k \"npm run start --workspace frontend\" \"npm run start --workspace backend\"",
-    "lint": "npm run lint --workspace frontend && npm run lint --workspace backend",
-    "db:generate": "npm run db:generate --workspace backend",
-    "db:migrate": "npm run db:migrate --workspace backend",
-    "db:seed": "npm run db:seed --workspace backend",
-    "db:studio": "npm run db:studio --workspace backend"
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
-  }
+  "engines": { "node": "22.x" },
+  "scripts": { "dev": "concurrently -k \"npm run dev --workspace @eventflow/frontend\" \"npm run dev --workspace @eventflow/backend\"", "build": "npm run build --workspace @eventflow/backend && npm run build --workspace @eventflow/frontend", "db:generate": "npm run db:generate --workspace backend", "db:migrate": "npm run db:migrate --workspace backend", "db:seed": "npm run db:seed --workspace backend", "db:studio": "npm run db:studio --workspace backend", "test": "npm test --workspace @eventflow/backend" },
+  "devDependencies": { "concurrently": "^9.2.1" },
+  "author": { "name": "Yasin Muhammed Tukur", "email": "saukakke@gmail.com", "url": "https://github.com/saukkake" }
 }
