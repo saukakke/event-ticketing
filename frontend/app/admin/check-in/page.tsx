@@ -29,17 +29,14 @@ export default function AdminCheckIn() {
 
     const load = async () => {
       try {
-        const response = await api<{ data: CheckInData }>("/organizer/check-in");
-        if (!cancelled) setData(response.data);
+        const response = await api<CheckInData>("/organizer/check-in");
+        if (!cancelled) setData(response);
       } catch (error) {
-        if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "Unable to load check-in data.");
-        }
+        if (!cancelled) setMessage(error instanceof Error ? error.message : "Unable to load check-in data.");
       }
     };
 
     void load();
-
     return () => {
       cancelled = true;
     };
@@ -58,8 +55,8 @@ export default function AdminCheckIn() {
       setMessage(`Checked in ${response.code} successfully.`);
       setCode("");
 
-      const refreshed = await api<{ data: CheckInData }>("/organizer/check-in");
-      setData(refreshed.data);
+      const refreshed = await api<CheckInData>("/organizer/check-in");
+      setData(refreshed);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Check-in failed.");
     } finally {
