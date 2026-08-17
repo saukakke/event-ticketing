@@ -20,7 +20,7 @@ export function EventCard({ event, index = 0 }: { event: Event; index?: number }
         <p>{event.description.slice(0, 110)}{event.description.length > 110 ? "…" : ""}</p>
         <div className="card-footer">
           <div className="price">From {formatNaira(lowest)}</div>
-          <Link className="btn btn-secondary" href={`/events/${event.id}`}>View event</Link>
+          <Link className="btn btn-secondary" href={`/api/events/${event.id}`}>View event</Link>
         </div>
       </div>
     </article>
