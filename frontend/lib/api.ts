@@ -1,7 +1,9 @@
 const BACKEND_URL = process.env.BACKEND_URL;
 
 function getServerApiBase() {
-  if (!BACKEND_URL) throw new Error("BACKEND_URL is not configured. Set the frontend BACKEND_URL environment variable.");
+  if (!BACKEND_URL) {
+    throw new Error("BACKEND_URL is not configured. Set the frontend BACKEND_URL environment variable.");
+  }
   return `${BACKEND_URL.replace(/\/$/, "")}/api`;
 }
 
@@ -10,6 +12,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const headers = new Headers(options.headers);
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const baseUrl = typeof window === "undefined" ? getServerApiBase() : "/api";
+
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${normalizedPath}`, {
@@ -21,17 +24,56 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   } catch {
     throw new Error("Unable to reach the EventFlow server. Please check that the backend is running and the application is configured correctly.");
   }
+
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : null;
-  if (!response.ok) throw new Error(payload?.error?.message || `The server returned an error (${response.status}). Please try again.`);
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `The server returned an error (${response.status}). Please try again.`);
+  }
   if (!payload || !("data" in payload)) throw new Error("The server returned an invalid response.");
   return payload.data as T;
 }
 
-export type Event = { id: string; title: string; slug: string; description: string; venue: string; city: string; startAt: string; endAt: string; status: string; ticketTypes: TicketType[]; organizer?: { name: string } };
-export type TicketType = { id: string; name: string; description: string; priceKobo: number; quantity: number; quantityRemaining: number };
-export type Ticket = { id: string; code: string; qrDataUrl: string; status: "ACTIVE" | "VOID"; checkedIn: boolean; checkedInAt?: string | null };
-export function formatNaira(kobo: number) { return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(kobo / 100); }
+export type Event = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  venue: string;
+  city: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  ticketTypes: TicketType[];
+  organizer?: { name: string };
+};
+
+export type TicketType = {
+  id: string;
+  name: string;
+  description: string;
+  priceKobo: number;
+  quantity: number;
+  quantityRemaining: number;
+};
+
+export type Ticket = {
+  id: string;
+  code: string;
+  qrDataUrl: string;
+  status: "ACTIVE" | "VOID";
+  checkedIn: boolean;
+  checkedInAt?: string | null;
+};
+
+export function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
+
 export function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—";
   const date = value instanceof Date ? value : new Date(value);
