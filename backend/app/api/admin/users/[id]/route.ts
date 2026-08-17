@@ -1,0 +1,76 @@
+import { getAuthUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { errorResponse, handleError, ok } from "@/lib/http";
+
+const ROLES = ["ATTENDEE", "ORGANIZER", "ADMIN"] as const;
+type Role = (typeof ROLES)[number];
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getAuthUser();
+    if (!user) return errorResponse("UNAUTHENTICATED", "Sign in required.", 401);
+    if (user.role !== "ADMIN") return errorResponse("FORBIDDEN", "Admin access required.", 403);
+
+    const { id } = await params;
+    const data = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        events: { select: { id: true, title: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 10 },
+        orders: { select: { id: true, status: true, totalKobo: true, event: { select: { title: true } }, createdAt: true }, orderBy: { createdAt: "desc" }, take: 10 },
+        _count: { select: { events: true, orders: true, auditLogs: true } },
+      },
+    });
+
+    if (!data) return errorResponse("NOT_FOUND", "User not found.", 404);
+    return ok(data);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const actor = await getAuthUser();
+    if (!actor) return errorResponse("UNAUTHENTICATED", "Sign in required.", 401);
+    if (actor.role !== "ADMIN") return errorResponse("FORBIDDEN", "Admin access required.", 403);
+
+    const { id } = await params;
+    const body = await request.json().catch(() => null);
+    const role = body?.role as Role | undefined;
+    if (!role || !ROLES.includes(role)) return errorResponse("VALIDATION_ERROR", "A valid user role is required.", 422);
+    if (id === actor.id && role !== "ADMIN") {
+      return errorResponse("SELF_ROLE_CHANGE_BLOCKED", "You cannot remove your own administrator role.", 409);
+    }
+
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+    if (!target) return errorResponse("NOT_FOUND", "User not found.", 404);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.user.update({
+        where: { id },
+        data: { role },
+        select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "USER_ROLE_CHANGED",
+          entity: "User",
+          entityId: id,
+          metadata: { previousRole: target.role, newRole: role },
+        },
+      });
+      return next;
+    });
+
+    return ok(updated, "User role updated successfully.");
+  } catch (error) {
+    return handleError(error);
+  }
+}
