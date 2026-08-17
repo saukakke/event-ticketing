@@ -1,15 +1,185 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
-enum UserRole { ATTENDEE ORGANIZER ADMIN }
-enum EventStatus { DRAFT PUBLISHED CANCELLED }
-enum OrderStatus { PENDING PAID FAILED REFUNDED }
-enum TicketStatus { ACTIVE VOID }
-enum RefundStatus { PENDING PROCESSING PROCESSED FAILED }
-model User { id String @id @default(cuid()) name String email String @unique passwordHash String role UserRole @default(ATTENDEE) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt events Event[] @relation("OrganizerEvents") orders Order[] auditLogs AuditLog[] refundsRequested Refund[] @relation("RefundRequestedBy") }
-model Event { id String @id @default(cuid()) title String slug String @unique description String venue String city String startAt DateTime endAt DateTime status EventStatus @default(DRAFT) organizerId String createdAt DateTime @default(now()) updatedAt DateTime @updatedAt organizer User @relation("OrganizerEvents", fields: [organizerId], references: [id], onDelete: Cascade) ticketTypes TicketType[] orders Order[] tickets Ticket[] refunds Refund[] @@index([status, startAt]) @@index([organizerId]) }
-model TicketType { id String @id @default(cuid()) eventId String name String description String @default("") priceKobo Int quantity Int quantityRemaining Int createdAt DateTime @default(now()) updatedAt DateTime @updatedAt event Event @relation(fields: [eventId], references: [id], onDelete: Cascade) orderItems OrderItem[] tickets Ticket[] @@index([eventId]) }
-model Order { id String @id @default(cuid()) userId String eventId String status OrderStatus @default(PENDING) totalKobo Int currency String @default("NGN") paymentReference String? @unique createdAt DateTime @default(now()) updatedAt DateTime @updatedAt user User @relation(fields: [userId], references: [id], onDelete: Restrict) event Event @relation(fields: [eventId], references: [id], onDelete: Restrict) items OrderItem[] tickets Ticket[] refunds Refund[] @@index([userId, createdAt]) @@index([eventId, status]) @@index([eventId, createdAt]) @@index([status, updatedAt]) }
-model OrderItem { id String @id @default(cuid()) orderId String ticketTypeId String quantity Int unitPriceKobo Int order Order @relation(fields: [orderId], references: [id], onDelete: Cascade) ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict) @@index([orderId]) }
-model Ticket { id String @id @default(cuid()) orderId String eventId String ticketTypeId String code String @unique qrToken String @unique qrDataUrl String status TicketStatus @default(ACTIVE) checkedIn Boolean @default(false) checkedInAt DateTime? createdAt DateTime @default(now()) order Order @relation(fields: [orderId], references: [id], onDelete: Cascade) event Event @relation(fields: [eventId], references: [id], onDelete: Restrict) ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict) @@index([eventId, checkedIn]) @@index([eventId, createdAt]) @@index([eventId, status]) @@index([orderId]) }
-model Refund { id String @id @default(cuid()) orderId String eventId String requestedById String amountKobo Int currency String @default("NGN") status RefundStatus @default(PENDING) providerReference String? reason String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt order Order @relation(fields: [orderId], references: [id], onDelete: Restrict) event Event @relation(fields: [eventId], references: [id], onDelete: Restrict) requestedBy User @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict) @@unique([orderId]) @@index([orderId, createdAt]) @@index([eventId, createdAt]) @@index([status, createdAt]) }
-model AuditLog { id String @id @default(cuid()) actorId String action String entity String entityId String metadata Json? createdAt DateTime @default(now()) actor User @relation(fields: [actorId], references: [id], onDelete: Restrict) @@index([actorId, createdAt]) @@index([entity, entityId, createdAt]) }
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ATTENDEE
+  ORGANIZER
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TicketStatus {
+  ACTIVE
+  VOID
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model User {
+  id               String      @id @default(cuid())
+  name             String
+  email            String      @unique
+  passwordHash     String
+  role             UserRole    @default(ATTENDEE)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  events           Event[]     @relation("OrganizerEvents")
+  orders           Order[]
+  auditLogs        AuditLog[]
+  refundsRequested Refund[]    @relation("RefundRequestedBy")
+}
+
+model Event {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  description String
+  venue       String
+  city        String
+  startAt     DateTime
+  endAt       DateTime
+  status      EventStatus  @default(DRAFT)
+  organizerId String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  organizer   User         @relation("OrganizerEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  ticketTypes TicketType[]
+  orders      Order[]
+  tickets     Ticket[]
+  refunds     Refund[]
+
+  @@index([status, startAt])
+  @@index([organizerId])
+}
+
+model TicketType {
+  id                String      @id @default(cuid())
+  eventId           String
+  name              String
+  description       String      @default("")
+  priceKobo         Int
+  quantity          Int
+  quantityRemaining Int
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  event             Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItems        OrderItem[]
+  tickets           Ticket[]
+
+  @@index([eventId])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  userId           String
+  eventId          String
+  status           OrderStatus @default(PENDING)
+  totalKobo        Int
+  currency         String      @default("NGN")
+  paymentReference String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  user             User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  event            Event       @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  items            OrderItem[]
+  tickets          Ticket[]
+  refunds          Refund[]
+
+  @@index([userId, createdAt])
+  @@index([eventId, status])
+  @@index([eventId, createdAt])
+  @@index([status, updatedAt])
+}
+
+model OrderItem {
+  id           String     @id @default(cuid())
+  orderId      String
+  ticketTypeId String
+  quantity     Int
+  unitPriceKobo Int
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+model Ticket {
+  id         String       @id @default(cuid())
+  orderId    String
+  eventId    String
+  ticketTypeId String
+  code       String       @unique
+  qrToken    String       @unique
+  qrDataUrl  String
+  status     TicketStatus @default(ACTIVE)
+  checkedIn  Boolean      @default(false)
+  checkedInAt DateTime?
+  createdAt  DateTime     @default(now())
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ticketType TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, checkedIn])
+  @@index([eventId, createdAt])
+  @@index([eventId, status])
+  @@index([orderId])
+}
+
+model Refund {
+  id                String       @id @default(cuid())
+  orderId           String
+  eventId           String
+  requestedById     String
+  amountKobo        Int
+  currency          String       @default("NGN")
+  status            RefundStatus @default(PENDING)
+  providerReference String?
+  reason            String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  order             Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  event             Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  requestedBy       User         @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@unique([orderId])
+  @@index([orderId, createdAt])
+  @@index([eventId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([actorId, createdAt])
+  @@index([entity, entityId, createdAt])
+}
