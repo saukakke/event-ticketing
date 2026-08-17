@@ -1,73 +1,112 @@
 # Deployment
 
-## Option A: Separate Node deployments
+EventFlow is designed as two independently deployable Node.js/Next.js services.
 
-Deploy `backend` as a Node.js service and `frontend` as a Node.js service.
+## Render topology
 
-### Backend environment
+- Frontend: Next.js standalone service on port `10000`.
+- Backend: Next.js API service on port `10000`.
+- PostgreSQL: managed PostgreSQL database.
+- Paystack: Test Mode for the current capstone deployment.
+
+Both services can listen on `10000` because Render assigns them separate service network namespaces.
+
+## Backend environment
 
 ```env
-DATABASE_URL=...
-JWT_SECRET=...
+DATABASE_URL=postgresql://...
+JWT_SECRET=<minimum 32-character random secret>
 FRONTEND_URL=https://your-frontend.example
 NODE_ENV=production
+PAYSTACK_SECRET_KEY=sk_test_...
 ```
 
-### Frontend environment
+`FRONTEND_URL` may contain comma-separated allowed browser origins when multiple trusted frontend origins are required.
+
+## Frontend environment
 
 ```env
-NEXT_PUBLIC_API_URL=https://your-backend.example
+BACKEND_URL=https://your-backend.example
 NODE_ENV=production
 ```
 
-Build:
+Do not use `NEXT_PUBLIC_BACKEND_URL` for the backend origin. The frontend API proxy reads `BACKEND_URL` server-side so the backend URL is not exposed as a public browser variable.
+
+## Build and start
+
+From the repository root:
 
 ```bash
+npm install
 npm run build
 ```
 
-Start each service:
+For local development:
 
 ```bash
-npm run start --workspace backend
-npm run start --workspace frontend
+npm run dev
 ```
 
-## Option B: Docker
+For individual services:
 
-The root includes a PostgreSQL compose file for local infrastructure. For production, use a managed PostgreSQL service or a separately managed database.
+```bash
+npm run build --workspace @eventflow/backend
+npm run start --workspace @eventflow/backend
 
-A production Docker deployment should use multi-stage builds and a non-root runtime user. The Next.js documentation supports Docker and standalone output.
+npm run build --workspace @eventflow/frontend
+npm run start --workspace @eventflow/frontend
+```
 
-## Database
+## Docker
 
-Use a managed PostgreSQL database with:
+Both applications use multi-stage Docker builds with Next.js standalone output.
 
-- automated backups
-- SSL
-- connection limits
-- monitoring
-- point-in-time recovery where available
+Backend startup applies committed Prisma migrations before starting the standalone server:
 
-Run:
+```bash
+npx prisma migrate deploy && node server.js
+```
+
+The backend image does not copy a `public` directory because the backend service does not contain one. The frontend image copies its tracked `public` directory.
+
+## Database deployment
+
+Run migrations through the deployment pipeline:
 
 ```bash
 npx prisma migrate deploy
 ```
 
-before serving the new release.
+Prisma's `migrate deploy` applies pending migrations but does not detect arbitrary database drift, so schema/migration consistency should be checked during development and release verification. citeturn0search0turn0search8
 
-## Reverse proxy
+Never run `prisma migrate reset` against production.
 
-Terminate TLS at your platform or reverse proxy. Forward HTTPS traffic to the frontend and API services. Configure the API's allowed frontend origin explicitly.
+## Paystack webhook
 
-## Production observability
+Configure the Paystack webhook to point to:
 
-Recommended:
+```text
+https://<backend-domain>/api/payments/paystack/webhook
+```
 
-- application error tracking
-- request logs with correlation IDs
-- PostgreSQL metrics
-- uptime monitoring
-- payment webhook monitoring
-- failed-order alerts
+The webhook validates the `x-paystack-signature` header using HMAC-SHA512 and performs idempotent payment finalization or reversal handling.
+
+## Health check
+
+```text
+GET https://<backend-domain>/api/health
+```
+
+Use this endpoint for service availability checks.
+
+## Production checklist
+
+- Use a cryptographically random `JWT_SECRET` of at least 32 characters.
+- Use HTTPS for both services.
+- Use a managed PostgreSQL database with backups and monitoring.
+- Configure the real frontend origin in `FRONTEND_URL`.
+- Keep `PAYSTACK_SECRET_KEY` server-side.
+- Apply Prisma migrations before starting the new backend release.
+- Configure Paystack webhook delivery and monitor failures.
+- Enable application and database monitoring.
+- Do not advertise Test Mode as a live-payment environment.
