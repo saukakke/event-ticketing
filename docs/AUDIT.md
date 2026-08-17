@@ -78,6 +78,18 @@ The repository has separate Next.js `frontend` and `backend` applications. Relyi
 
 **Correction:** `backend/.env.example` was added and the service-specific environment model is documented. The frontend already has `frontend/.env.example`.
 
+### 13. Last administrator protection — corrected
+
+The administrator user-management endpoint previously allowed an administrator to demote another administrator without checking whether that would leave the platform without an active administrator.
+
+**Correction:** an administrator cannot demote the last active, non-suspended, non-deleted administrator account. Self-demotion remains prohibited.
+
+### 14. API documentation route drift — corrected
+
+The API guide previously implied that administrator check-in had a separate `/admin/check-in` backend endpoint and omitted the organizer refund endpoint.
+
+**Correction:** `docs/API.md` now documents `/organizer/refunds` and clarifies that the administrator check-in UI intentionally uses `/organizer/check-in`, which authorizes both organizers and administrators.
+
 ## Current architecture
 
 ```text
@@ -156,6 +168,7 @@ The implementation contains these relevant controls:
 - Idempotent payment finalization.
 - Inventory restoration for failed/reversed payments.
 - Server-only Paystack secret.
+- Protection against removing the last active administrator.
 
 ## Verification status
 
@@ -172,6 +185,8 @@ The implementation contains these relevant controls:
 - Event-detail and event-list error handling.
 - Event-list pagination input handling.
 - Service-specific environment templates.
+- Administrator role-management safeguards.
+- Refund and check-in route documentation.
 
 ### Still requires runtime verification
 
@@ -191,9 +206,11 @@ The GitHub connector does not provide a local Node/PostgreSQL runtime for this a
 12. Verify organizer ownership and admin authorization.
 13. Verify suspended/soft-deleted account behavior.
 14. Verify malformed pagination parameters such as `?page=abc&limit=xyz` fall back safely.
+15. Verify that demoting an administrator is rejected when it would remove the last active administrator.
+16. Verify refund processing and ticket invalidation in Paystack Test Mode.
 
 ## Release assessment
 
-The major source-level blockers found during the audit have been corrected, including schema drift, frontend/backend inventory-contract mismatch, broken event checkout redirect, incorrect 404 detection, password-rule mismatch, stale documentation, Docker filesystem assumptions, workspace environment ambiguity and malformed pagination handling.
+The major source-level blockers found during the audit have been corrected, including schema drift, frontend/backend inventory-contract mismatch, broken event checkout redirect, incorrect 404 detection, password-rule mismatch, stale documentation, Docker filesystem assumptions, workspace environment ambiguity, malformed pagination handling and last-administrator protection.
 
 The repository is **source-audited but not runtime-certified** until the complete CI/build/browser/payment verification sequence succeeds.
