@@ -82,7 +82,11 @@ export async function POST(request: NextRequest) {
     } catch (paymentError) {
       try {
         const providerTransaction = await verifyPaystackTransaction(prepared.paymentReference);
-        if (providerTransaction.reference === prepared.paymentReference && providerTransaction.status === "success") {
+        if (providerTransaction.reference !== prepared.paymentReference) {
+          return errorResponse("PAYMENT_STATUS_UNKNOWN", "The payment provider returned a mismatched transaction reference. Please check the order before retrying.", 502);
+        }
+
+        if (providerTransaction.status === "success") {
           const finalized = await finalizePaystackOrder(prepared.paymentReference);
           if (!finalized) throw new Error("PAYMENT_FINALIZATION_INCOMPLETE");
           return ok({
@@ -92,21 +96,20 @@ export async function POST(request: NextRequest) {
             status: finalized.status,
           }, 201);
         }
-      } catch {
-        // The provider state is unknown; the reservation is released below so the
-        // customer can safely retry instead of leaving inventory locked.
-      }
 
-      await releaseReservedStock(prepared.order.id);
-      const message = paymentError instanceof Error ? paymentError.message : "Payment initialization failed.";
-      return errorResponse("PAYMENT_INITIALIZATION_FAILED", message, 502);
+        await releaseReservedStock(prepared.order.id);
+        return errorResponse("PAYMENT_INITIALIZATION_FAILED", "Paystack did not confirm a successful transaction. Your ticket reservation has been released.", 502);
+      } catch (verificationError) {
+        console.error("Unable to determine Paystack payment state after initialization failure:", verificationError);
+        const message = paymentError instanceof Error ? paymentError.message : "Payment initialization failed.";
+        return errorResponse("PAYMENT_STATUS_UNKNOWN", `${message} The payment provider status is currently unknown. Please check the order before retrying.`, 502);
+      }
     }
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "EVENT_NOT_FOUND") return errorResponse("NOT_FOUND", "Event not found or not published.", 404);
       if (error.message === "INVALID_TICKET_TYPE") return errorResponse("INVALID_TICKET_TYPE", "One or more ticket types are invalid.", 400);
       if (error.message === "INSUFFICIENT_STOCK") return errorResponse("INSUFFICIENT_STOCK", "One or more selected ticket types are sold out.", 409);
-      if (error.message === "FRONTEND_URL is not configured.") return errorResponse("PAYMENT_CONFIGURATION_ERROR", error.message, 500);
     }
     return handleError(error);
   }
