@@ -1,4 +1,4 @@
-const API_BASE = "";
+const API_BASE = "https://event-ticketing-backend-yzzr.onrender.com/api/";
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
