@@ -2,7 +2,7 @@
 
 **Last audited:** 17 August 2026
 
-This inventory reflects the current repository structure and the implemented application areas. It replaces the older file list that omitted the administrator, payment, check-in, middleware and migration work added later in the project.
+This inventory reflects the current repository structure and the implemented application areas. It replaces the older file list that omitted the administrator, payment, check-in, audit, middleware and migration work added later in the project.
 
 ## Repository root
 
@@ -64,6 +64,7 @@ backend/
 │               ├── callback/
 │               └── webhook/
 ├── lib/
+│   ├── audit.ts
 │   ├── auth.ts
 │   ├── db.ts
 │   ├── http.ts
