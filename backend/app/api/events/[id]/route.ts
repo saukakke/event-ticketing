@@ -32,6 +32,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (event.organizerId !== user.id && user.role !== "ADMIN") return errorResponse("FORBIDDEN", "You cannot edit this event.", 403);
 
     const input = updateEventSchema.parse(await request.json());
+    const nextStartAt = input.startAt ?? event.startAt;
+    const nextEndAt = input.endAt ?? event.endAt;
+    if (nextEndAt <= nextStartAt) {
+      return errorResponse("VALIDATION_ERROR", "End time must be after start time.", 400);
+    }
+
     const updated = await prisma.event.update({ where: { id }, data: input });
     return ok(updated);
   } catch (error) {
