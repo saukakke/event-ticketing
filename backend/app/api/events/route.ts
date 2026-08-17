@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthUser, requireRole } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createEventSchema } from "@/lib/validation";
 import { handleError, ok, errorResponse } from "@/lib/http";
 import { slugify } from "@/lib/slug";
@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
       prisma.event.findMany({
         where,
         include: { ticketTypes: { orderBy: { priceKobo: "asc" }, take: 1 } },
-        orderBy: { startAt: "asc" },
+        // Public listings are shown by creation date so the landing page's
+        // "most recent" section is deterministic and does not depend on the
+        // event date being farthest/nearest in the future.
+        orderBy: [{ createdAt: "desc" }, { startAt: "asc" }],
         skip: (page - 1) * limit,
         take: limit,
       }),
