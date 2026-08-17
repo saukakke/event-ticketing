@@ -26,6 +26,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     const finalized = await finalizePaystackOrder(order.paymentReference);
 
+    if (!finalized) {
+      return errorResponse("PAYMENT_VERIFICATION_INCOMPLETE", "The payment could not be finalized. Please verify the transaction again.", 409);
+    }
+
     if (finalized.status !== "PAID") {
       return errorResponse("PAYMENT_NOT_SUCCESSFUL", "Paystack has not confirmed a successful payment for this order.", 409);
     }
