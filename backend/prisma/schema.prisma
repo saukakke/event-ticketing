@@ -98,6 +98,8 @@ model Order {
 
   @@index([userId, createdAt])
   @@index([eventId, status])
+  @@index([eventId, createdAt])
+  @@index([status, updatedAt])
 }
 
 model OrderItem {
@@ -130,5 +132,6 @@ model Ticket {
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
 
   @@index([eventId, checkedIn])
+  @@index([eventId, createdAt])
   @@index([orderId])
 }
