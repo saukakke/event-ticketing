@@ -5,13 +5,20 @@ import { createEventSchema } from "@/lib/validation";
 import { handleError, ok, errorResponse } from "@/lib/http";
 import { slugify } from "@/lib/slug";
 
+function positiveInteger(value: string | null, fallback: number, maximum: number) {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, maximum);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();
     const city = searchParams.get("city")?.trim();
-    const page = Math.max(1, Number(searchParams.get("page") || 1));
-    const limit = Math.min(30, Math.max(1, Number(searchParams.get("limit") || 12)));
+    const page = positiveInteger(searchParams.get("page"), 1, 10_000);
+    const limit = positiveInteger(searchParams.get("limit"), 12, 30);
 
     const where = {
       status: "PUBLISHED" as const,
@@ -59,14 +66,14 @@ export async function POST(request: NextRequest) {
         endAt: input.endAt,
         organizerId: user.id,
         ticketTypes: {
-  create: input.ticketTypes.map((ticketType) => ({
-    name: ticketType.name,
-    description: ticketType.description,
-    priceKobo: ticketType.priceKobo,
-    quantity: ticketType.quantity,
-    quantityRemaining: ticketType.quantity,
-  })),
-},
+          create: input.ticketTypes.map((ticketType) => ({
+            name: ticketType.name,
+            description: ticketType.description,
+            priceKobo: ticketType.priceKobo,
+            quantity: ticketType.quantity,
+            quantityRemaining: ticketType.quantity,
+          })),
+        },
       },
       include: { ticketTypes: true },
     });
