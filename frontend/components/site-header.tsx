@@ -14,9 +14,12 @@ export function SiteHeader() {
   }, []);
 
   async function logout() {
-    await api("/auth/logout", { method: "POST" });
-    setUser(null);
-    window.location.href = "/";
+    try {
+      await api("/auth/logout", { method: "POST" });
+    } finally {
+      setUser(null);
+      window.location.href = "/";
+    }
   }
 
   return (
@@ -30,6 +33,7 @@ export function SiteHeader() {
           <Link href="/events">Explore</Link>
           {user && <Link href="/dashboard">My tickets</Link>}
           {(user?.role === "ORGANIZER" || user?.role === "ADMIN") && <Link href="/organizer">Organizer</Link>}
+          {user?.role === "ADMIN" && <Link href="/admin">Admin</Link>}
         </nav>
         <div className="nav-actions">
           {user ? (
