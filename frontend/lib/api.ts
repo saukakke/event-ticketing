@@ -1,4 +1,11 @@
-const API_BASE = "https://event-ticketing-backend-yzzr.onrender.com";
+const BACKEND_URL = process.env.BACKEND_URL;
+
+function getServerApiBase() {
+  if (!BACKEND_URL) {
+    throw new Error("BACKEND_URL is not configured. Set the frontend BACKEND_URL environment variable.");
+  }
+  return `${BACKEND_URL.replace(/\/$/, "")}/api`;
+}
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -6,10 +13,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
   // Browser requests stay same-origin so the session cookie belongs to the
-  // Render frontend. The Next.js rewrite proxies /api/* to the backend.
-  // Server-rendered pages use the backend directly because relative fetch URLs
-  // are not available from the Next.js server runtime.
-  const baseUrl = typeof window === "undefined" ? `${API_BASE}/api` : "/api";
+  // Render frontend. The Next.js rewrite proxies /api/* to BACKEND_URL.
+  // Server-rendered pages use BACKEND_URL directly.
+  const baseUrl = typeof window === "undefined" ? getServerApiBase() : "/api";
 
   let response: Response;
   try {
