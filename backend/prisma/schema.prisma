@@ -44,12 +44,18 @@ model User {
   email            String      @unique
   passwordHash     String
   role             UserRole    @default(ATTENDEE)
+  suspendedAt      DateTime?
+  suspensionReason String?
+  deletedAt        DateTime?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   events           Event[]     @relation("OrganizerEvents")
   orders           Order[]
   auditLogs        AuditLog[]
   refundsRequested Refund[]    @relation("RefundRequestedBy")
+
+  @@index([role, suspendedAt])
+  @@index([deletedAt])
 }
 
 model Event {
@@ -115,32 +121,32 @@ model Order {
 }
 
 model OrderItem {
-  id           String     @id @default(cuid())
-  orderId      String
-  ticketTypeId String
-  quantity     Int
+  id            String     @id @default(cuid())
+  orderId       String
+  ticketTypeId  String
+  quantity      Int
   unitPriceKobo Int
-  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  order         Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType    TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
 }
 
 model Ticket {
-  id         String       @id @default(cuid())
-  orderId    String
-  eventId    String
+  id           String       @id @default(cuid())
+  orderId      String
+  eventId      String
   ticketTypeId String
-  code       String       @unique
-  qrToken    String       @unique
-  qrDataUrl  String
-  status     TicketStatus @default(ACTIVE)
-  checkedIn  Boolean      @default(false)
-  checkedInAt DateTime?
-  createdAt  DateTime     @default(now())
-  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  event      Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  ticketType TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  code         String       @unique
+  qrToken      String       @unique
+  qrDataUrl    String
+  status       TicketStatus @default(ACTIVE)
+  checkedIn    Boolean      @default(false)
+  checkedInAt  DateTime?
+  createdAt    DateTime     @default(now())
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
 
   @@index([eventId, checkedIn])
   @@index([eventId, createdAt])
@@ -180,6 +186,6 @@ model AuditLog {
   createdAt DateTime @default(now())
   actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
-  @@index([actorId, createdAt])
   @@index([entity, entityId, createdAt])
+  @@index([actorId, createdAt])
 }
