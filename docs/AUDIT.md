@@ -82,7 +82,7 @@ The repository has separate Next.js `frontend` and `backend` applications. Relyi
 
 The administrator user-management endpoint previously allowed an administrator to demote another administrator without checking whether that would leave the platform without an active administrator.
 
-**Correction:** an administrator cannot demote the last active, non-suspended, non-deleted administrator account. Self-demotion remains prohibited.
+**Correction:** an administrator cannot demote the last active, non-suspended, non-deleted administrator account. The check and role update now run inside a serializable transaction to prevent concurrent role changes from bypassing the safeguard. Self-demotion remains prohibited.
 
 ### 14. API documentation route drift — corrected
 
@@ -206,7 +206,7 @@ The GitHub connector does not provide a local Node/PostgreSQL runtime for this a
 12. Verify organizer ownership and admin authorization.
 13. Verify suspended/soft-deleted account behavior.
 14. Verify malformed pagination parameters such as `?page=abc&limit=xyz` fall back safely.
-15. Verify that demoting an administrator is rejected when it would remove the last active administrator.
+15. Verify that demoting an administrator is rejected when it would remove the last active administrator, including concurrent role-change attempts.
 16. Verify refund processing and ticket invalidation in Paystack Test Mode.
 
 ## Release assessment
