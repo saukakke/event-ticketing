@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { getAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { errorResponse, handleError, ok } from "@/lib/http";
@@ -40,29 +41,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (role !== undefined) {
       if (!ROLES.includes(role)) return errorResponse("VALIDATION_ERROR", "A valid user role is required.", 422);
       if (id === actor.id && role !== "ADMIN") return errorResponse("SELF_ACCOUNT_PROTECTION", "You cannot demote your own administrator account.", 409);
-      const target = await prisma.user.findUnique({ where: { id }, select: { id: true, name: true, role: true } });
-      if (!target) return errorResponse("NOT_FOUND", "User not found.", 404);
 
-      if (target.role === "ADMIN" && role !== "ADMIN") {
-        const otherActiveAdminCount = await prisma.user.count({
-          where: {
-            role: "ADMIN",
-            id: { not: id },
-            suspendedAt: null,
-            deletedAt: null,
-          },
-        });
-        if (otherActiveAdminCount === 0) {
-          return errorResponse("LAST_ADMIN_PROTECTION", "The last active administrator cannot be demoted.", 409);
-        }
+      try {
+        const updated = await prisma.$transaction(async (tx) => {
+          const target = await tx.user.findUnique({ where: { id }, select: { id: true, name: true, role: true } });
+          if (!target) throw new Error("USER_NOT_FOUND");
+
+          if (target.role === "ADMIN" && role !== "ADMIN") {
+            const otherActiveAdminCount = await tx.user.count({
+              where: {
+                role: "ADMIN",
+                id: { not: id },
+                suspendedAt: null,
+                deletedAt: null,
+              },
+            });
+            if (otherActiveAdminCount === 0) throw new Error("LAST_ADMIN_PROTECTION");
+          }
+
+          const next = await tx.user.update({ where: { id }, data: { role }, select: { id: true, name: true, email: true, role: true, suspendedAt: true, deletedAt: true, createdAt: true, updatedAt: true } });
+          await tx.auditLog.create({ data: { actorId: actor.id, action: "USER_ROLE_CHANGED", entity: "User", entityId: id, metadata: { previousRole: target.role, newRole: role } } });
+          return next;
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        return ok(updated, "User role updated successfully.");
+      } catch (error) {
+        if (error instanceof Error && error.message === "USER_NOT_FOUND") return errorResponse("NOT_FOUND", "User not found.", 404);
+        if (error instanceof Error && error.message === "LAST_ADMIN_PROTECTION") return errorResponse("LAST_ADMIN_PROTECTION", "The last active administrator cannot be demoted.", 409);
+        throw error;
       }
-
-      const updated = await prisma.$transaction(async (tx) => {
-        const next = await tx.user.update({ where: { id }, data: { role }, select: { id: true, name: true, email: true, role: true, suspendedAt: true, deletedAt: true, createdAt: true, updatedAt: true } });
-        await tx.auditLog.create({ data: { actorId: actor.id, action: "USER_ROLE_CHANGED", entity: "User", entityId: id, metadata: { previousRole: target.role, newRole: role } } });
-        return next;
-      });
-      return ok(updated, "User role updated successfully.");
     }
 
     if (!action || !ACTIONS.includes(action)) return errorResponse("VALIDATION_ERROR", "A valid user action is required.", 422);
