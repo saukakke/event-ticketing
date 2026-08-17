@@ -77,7 +77,7 @@ Run migrations through the deployment pipeline:
 npx prisma migrate deploy
 ```
 
-Prisma's `migrate deploy` applies pending migrations but does not detect arbitrary database drift, so schema/migration consistency should be checked during development and release verification. citeturn0search0turn0search8
+Prisma's `migrate deploy` applies pending migrations but does not detect arbitrary database drift, so schema/migration consistency should be checked during development and release verification.
 
 Never run `prisma migrate reset` against production.
 
