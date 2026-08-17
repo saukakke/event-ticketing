@@ -1,66 +1,153 @@
 # Project Inventory
 
-The archive contains the following implemented files:
+**Last audited:** 17 August 2026
 
-- `.env.example`
-- `.github/workflows/ci.yml`
-- `.gitignore`
-- `LICENSE`
-- `README.md`
-- `backend/Dockerfile`
-- `backend/app/api/auth/login/route.ts`
-- `backend/app/api/auth/logout/route.ts`
-- `backend/app/api/auth/me/route.ts`
-- `backend/app/api/auth/register/route.ts`
-- `backend/app/api/events/[id]/publish/route.ts`
-- `backend/app/api/events/[id]/route.ts`
-- `backend/app/api/events/route.ts`
-- `backend/app/api/health/route.ts`
-- `backend/app/api/orders/me/route.ts`
-- `backend/app/api/orders/route.ts`
-- `backend/app/api/organizer/events/route.ts`
-- `backend/app/layout.tsx`
-- `backend/app/page.tsx`
-- `backend/lib/auth.ts`
-- `backend/lib/db.ts`
-- `backend/lib/http.ts`
-- `backend/lib/slug.ts`
-- `backend/lib/validation.ts`
-- `backend/next-env.d.ts`
-- `backend/next.config.ts`
-- `backend/package.json`
-- `backend/prisma/migrations/20260811090000_init/migration.sql`
-- `backend/prisma/schema.prisma`
-- `backend/prisma/seed.ts`
-- `backend/tsconfig.json`
-- `docker-compose.yml`
-- `docs/API.md`
-- `docs/ARCHITECTURE.md`
-- `docs/CAPSTONE.md`
-- `docs/DATABASE.md`
-- `docs/DECISIONS.md`
-- `docs/DEPLOYMENT.md`
-- `docs/SECURITY.md`
-- `docs/TESTING.md`
-- `frontend/Dockerfile`
-- `frontend/app/dashboard/page.tsx`
-- `frontend/app/events/[id]/page.tsx`
-- `frontend/app/events/page.tsx`
-- `frontend/app/globals.css`
-- `frontend/app/layout.tsx`
-- `frontend/app/login/page.tsx`
-- `frontend/app/organizer/new/page.tsx`
-- `frontend/app/organizer/page.tsx`
-- `frontend/app/page.tsx`
-- `frontend/app/register/page.tsx`
-- `frontend/components/auth-form.tsx`
-- `frontend/components/event-card.tsx`
-- `frontend/components/event-detail.tsx`
-- `frontend/components/site-header.tsx`
-- `frontend/lib/api.ts`
-- `frontend/next-env.d.ts`
-- `frontend/next.config.ts`
-- `frontend/package.json`
-- `frontend/public/.gitkeep`
-- `frontend/tsconfig.json`
-- `package.json`
+This inventory reflects the current repository structure and the implemented application areas. It replaces the older file list that omitted the administrator, payment, check-in, middleware and migration work added later in the project.
+
+## Repository root
+
+```text
+event-ticketing/
+├── .env.example
+├── .github/workflows/ci.yml
+├── .gitignore
+├── LICENSE
+├── PROJECT_INVENTORY.md
+├── README.md
+├── docker-compose.yml
+├── package.json
+├── backend/
+├── frontend/
+└── docs/
+```
+
+## Backend
+
+```text
+backend/
+├── Dockerfile
+├── middleware.ts
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── tsconfig.json
+├── app/
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── api/
+│       ├── admin/
+│       │   ├── audit/
+│       │   ├── orders/
+│       │   ├── overview/
+│       │   ├── payments/
+│       │   ├── tickets/
+│       │   └── users/
+│       ├── auth/
+│       │   ├── login/
+│       │   ├── logout/
+│       │   ├── me/
+│       │   └── register/
+│       ├── events/
+│       │   ├── [id]/
+│       │   └── [id]/publish/
+│       ├── health/
+│       ├── orders/
+│       │   └── me/
+│       ├── organizer/
+│       │   ├── check-in/
+│       │   ├── events/
+│       │   ├── orders/
+│       │   ├── payments/
+│       │   └── tickets/
+│       └── payments/
+│           └── paystack/
+│               ├── callback/
+│               └── webhook/
+├── lib/
+│   ├── auth.ts
+│   ├── db.ts
+│   ├── http.ts
+│   ├── order-payment.ts
+│   ├── paystack.ts
+│   ├── slug.ts
+│   └── validation.ts
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.js
+│   └── migrations/
+└── tests/
+    ├── paystack-signature.test.ts
+    ├── slug.test.ts
+    └── validation.test.ts
+```
+
+## Frontend
+
+```text
+frontend/
+├── Dockerfile
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── tsconfig.json
+├── public/
+│   └── .gitkeep
+├── app/
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── globals.css
+│   ├── api/[...path]/route.ts
+│   ├── dashboard/page.tsx
+│   ├── events/page.tsx
+│   ├── events/[id]/page.tsx
+│   ├── login/page.tsx
+│   ├── register/page.tsx
+│   ├── organizer/
+│   │   ├── page.tsx
+│   │   ├── new/page.tsx
+│   │   ├── orders/page.tsx
+│   │   ├── orders/[id]/page.tsx
+│   │   ├── tickets/page.tsx
+│   │   ├── payments/page.tsx
+│   │   └── check-in/page.tsx
+│   └── admin/
+│       ├── page.tsx
+│       ├── users/
+│       ├── orders/
+│       ├── tickets/
+│       ├── payments/
+│       ├── check-in/
+│       └── audit/
+├── components/
+│   ├── auth-form.tsx
+│   ├── event-card.tsx
+│   ├── event-detail.tsx
+│   └── site-header.tsx
+└── lib/api.ts
+```
+
+## Documentation
+
+```text
+docs/
+├── API.md
+├── ARCHITECTURE.md
+├── AUDIT.md
+├── CAPSTONE.md
+├── DATABASE.md
+├── DECISIONS.md
+├── DEPLOYMENT.md
+├── SECURITY.md
+└── TESTING.md
+```
+
+## Infrastructure and delivery
+
+- Dockerfiles exist for both deployable applications.
+- `docker-compose.yml` provides PostgreSQL for local development.
+- `.github/workflows/ci.yml` installs dependencies, generates Prisma Client, applies migrations, runs tests and builds both workspaces.
+- Prisma migration history is stored under `backend/prisma/migrations/`.
+
+## Audit note
+
+The repository contains additional nested route/component files under the directories above. The inventory intentionally uses route groups for large areas instead of duplicating every implementation line. `docs/AUDIT.md` records the source-level audit findings and corrections.
