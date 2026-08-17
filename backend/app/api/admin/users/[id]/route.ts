@@ -15,7 +15,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (actor.role !== "ADMIN") return errorResponse("FORBIDDEN", "Admin access required.", 403);
     const { id } = await params;
     const data = await prisma.user.findUnique({
-      where: { id: id as never },
+      where: { id },
       select: {
         id: true, name: true, email: true, role: true, suspendedAt: true, suspensionReason: true, deletedAt: true, createdAt: true, updatedAt: true,
         events: { select: { id: true, title: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 10 },
@@ -44,14 +44,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       try {
         const updated = await prisma.$transaction(async (tx) => {
-          const target = await tx.user.findUnique({ where: { id: id as never }, select: { id: true, name: true, role: true } });
+          const target = await tx.user.findUnique({ where: { id }, select: { id: true, name: true, role: true } });
           if (!target) throw new Error("USER_NOT_FOUND");
 
           if (target.role === "ADMIN" && role !== "ADMIN") {
             const otherActiveAdminCount = await tx.user.count({
               where: {
                 role: "ADMIN",
-                id: { not: id as never },
+                id: { not: id },
                 suspendedAt: null,
                 deletedAt: null,
               },
@@ -59,11 +59,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             if (otherActiveAdminCount === 0) throw new Error("LAST_ADMIN_PROTECTION");
           }
 
-          const next = await tx.user.update({ where: { id: id as never }, data: { role }, select: { id: true, name: true, email: true, role: true, suspendedAt: true, deletedAt: true, createdAt: true, updatedAt: true } });
+          const next = await tx.user.update({ where: { id }, data: { role }, select: { id: true, name: true, email: true, role: true, suspendedAt: true, deletedAt: true, createdAt: true, updatedAt: true } });
           await tx.auditLog.create({ data: { actorId: actor.id, action: "USER_ROLE_CHANGED", entity: "User", entityId: id, metadata: { previousRole: target.role, newRole: role } } });
           return next;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-        return ok(updated, "User role updated successfully.");
+        return ok(updated);
       } catch (error) {
         if (error instanceof Error && error.message === "USER_NOT_FOUND") return errorResponse("NOT_FOUND", "User not found.", 404);
         if (error instanceof Error && error.message === "LAST_ADMIN_PROTECTION") return errorResponse("LAST_ADMIN_PROTECTION", "The last active administrator cannot be demoted.", 409);
@@ -74,7 +74,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!action || !ACTIONS.includes(action)) return errorResponse("VALIDATION_ERROR", "A valid user action is required.", 422);
     if (id === actor.id) return errorResponse("SELF_ACCOUNT_PROTECTION", "You cannot suspend, delete or restore your own administrator account.", 409);
 
-    const target = await prisma.user.findUnique({ where: { id: id as never }, select: { id: true, name: true, role: true, suspendedAt: true, deletedAt: true } });
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, name: true, role: true, suspendedAt: true, deletedAt: true } });
     if (!target) return errorResponse("NOT_FOUND", "User not found.", 404);
     if (target.role === "ADMIN") return errorResponse("ADMIN_PROTECTION", "Administrator accounts cannot be suspended or deleted.", 409);
 
@@ -104,11 +104,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           data = { deletedAt: null };
           auditAction = "USER_RESTORED";
       }
-      const updated = await tx.user.update({ where: { id: id as never }, data, select: { id: true, name: true, email: true, role: true, suspendedAt: true, suspensionReason: true, deletedAt: true, createdAt: true, updatedAt: true } });
+      const updated = await tx.user.update({ where: { id }, data, select: { id: true, name: true, email: true, role: true, suspendedAt: true, suspensionReason: true, deletedAt: true, createdAt: true, updatedAt: true } });
       await tx.auditLog.create({ data: { actorId: actor.id, action: auditAction, entity: "User", entityId: id, metadata: { reason: reason || null } } });
       return updated;
     });
 
-    return ok(result, `User ${action} operation completed successfully.`);
+    return ok(result);
   } catch (error) { return handleError(error); }
 }
