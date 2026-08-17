@@ -39,19 +39,24 @@ enum RefundStatus {
 }
 
 model User {
-  id               String      @id @default(cuid())
-  name             String
-  email            String      @unique
-  passwordHash     String
-  role             UserRole    @default(ATTENDEE)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  events           Event[]     @relation("OrganizerEvents")
-  orders           Order[]
-  auditLogs        AuditLog[]
-  refundsRequested Refund[]    @relation("RefundRequestedBy")
+  id                String      @id @default(cuid())
+  name              String
+  email             String      @unique
+  passwordHash      String
+  role              UserRole    @default(ATTENDEE)
+  suspendedAt       DateTime?
+  suspensionReason  String?
+  deletedAt         DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  events            Event[]     @relation("OrganizerEvents")
+  orders            Order[]
+  auditLogs         AuditLog[]
+  refundsRequested  Refund[]    @relation("RefundRequestedBy")
 
   @@index([role])
+  @@index([role, suspendedAt])
+  @@index([deletedAt])
 }
 
 model Event {
@@ -83,8 +88,8 @@ model TicketType {
   name        String
   description String?
   priceKobo   Int
-  quantity    Int
-  sold        Int         @default(0)
+  capacity    Int
+  soldCount   Int         @default(0)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   orderItems  OrderItem[]
@@ -94,21 +99,21 @@ model TicketType {
 }
 
 model Order {
-  id              String       @id @default(cuid())
-  userId          String
-  eventId         String
-  status          OrderStatus  @default(PENDING)
-  currency        String       @default("NGN")
-  totalKobo       Int
-  paymentProvider String?
-  paymentReference String?     @unique
-  user            User         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  event           Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  items           OrderItem[]
-  tickets         Ticket[]
-  refunds         Refund[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                String      @id @default(cuid())
+  userId            String
+  eventId           String
+  status            OrderStatus @default(PENDING)
+  totalKobo         Int
+  currency          String      @default("NGN")
+  paystackReference String?     @unique
+  paymentMetadata   Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  user              User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  event             Event       @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  items             OrderItem[]
+  tickets           Ticket[]
+  refunds           Refund[]
 
   @@index([userId, status])
   @@index([eventId, status])
@@ -130,60 +135,58 @@ model OrderItem {
 
 model Ticket {
   id           String       @id @default(cuid())
-  orderId      String
-  eventId      String
-  ticketTypeId String
-  holderName   String
-  holderEmail  String
   code         String       @unique
   qrToken      String       @unique
-  qrDataUrl    String?
+  qrCodeDataUrl String
   status       TicketStatus @default(ACTIVE)
   checkedIn    Boolean      @default(false)
   checkedInAt  DateTime?
+  orderId      String
+  eventId      String
+  ticketTypeId String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
   ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
 
-  @@index([eventId, status])
   @@index([orderId])
-  @@index([holderEmail])
+  @@index([eventId, status])
+  @@index([ticketTypeId])
+  @@index([checkedIn])
 }
 
 model Refund {
-  id                String       @id @default(cuid())
-  orderId           String
-  eventId           String
-  requestedById     String
-  amountKobo        Int
-  currency          String       @default("NGN")
-  status            RefundStatus @default(PENDING)
-  provider          String       @default("PAYSTACK")
+  id              String       @id @default(cuid())
+  orderId         String
+  eventId         String
+  requestedById   String
+  amountKobo      Int
+  currency        String       @default("NGN")
+  status          RefundStatus @default(PENDING)
+  reason          String?
   providerReference String?
-  reason            String?
-  processedAt       DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  order             Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  event             Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  requestedBy       User         @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  providerResponse Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  event           Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  requestedBy     User         @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
 
   @@index([orderId, status])
   @@index([eventId, status])
-  @@index([requestedById])
+  @@index([status, createdAt])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
-  actorId   String
+  actorId   String?
   action    String
   entity    String
   entityId  String
   metadata  Json?
   createdAt DateTime @default(now())
-  actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([actorId, createdAt])
   @@index([entity, entityId, createdAt])
