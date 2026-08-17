@@ -2,54 +2,104 @@
 
 ## Authentication
 
-The backend creates a signed JWT and stores it in an HTTP-only cookie. JavaScript cannot read the cookie, reducing exposure to token theft through client-side scripts.
+The backend creates a signed JWT and stores it in an HTTP-only cookie. JavaScript cannot read the session cookie, reducing exposure to client-side token theft.
 
-Use HTTPS in production so the cookie can be marked secure.
+In production the cookie uses the `__Host-` prefix, `Secure`, `HttpOnly`, `SameSite=Lax` and `Path=/`.
+
+JWTs are validated with:
+
+- HS256 algorithm restriction;
+- issuer validation;
+- audience validation;
+- expiration validation;
+- database-backed user existence and account-status checks.
+
+Suspended and soft-deleted users cannot continue authenticated requests even when an older session token exists.
 
 ## Passwords
 
-Passwords are hashed with bcryptjs before storage. The application never logs raw passwords.
+Passwords are hashed with bcryptjs before storage. Raw passwords are not logged.
+
+The server requires passwords between 12 and 128 characters.
 
 ## Validation
 
-Zod schemas validate request bodies on the server. Client-side validation is convenience only and is never trusted.
+Zod schemas validate request bodies on the server. Client-side validation is convenience only and is never trusted for authorization or data integrity.
 
 ## Authorization
 
-Role checks occur on the server. Hiding a button in the frontend is not an authorization mechanism.
+Role checks occur on the server. Frontend buttons and links are not security boundaries.
+
+Organizer operations also verify event ownership unless the authenticated user is an administrator.
 
 ## SQL injection
 
-Prisma parameterizes database operations. Raw SQL is avoided in the application.
+Prisma parameterizes database operations. Application code does not use interpolated raw SQL.
 
 ## XSS
 
-Event descriptions are rendered as plain text. The application does not use `dangerouslySetInnerHTML`.
+Event descriptions are rendered as text. The application does not use `dangerouslySetInnerHTML`.
 
-## CSRF
+## CSRF and browser origins
 
-Because authentication uses a cookie, production payment/mutation deployments should add CSRF protection when cross-site requests are possible. A strict `SameSite=Lax` cookie is used in the MVP. If the frontend and API are deployed on different sites, use a CSRF token strategy and explicit origin validation.
+Because authentication uses cookies, state-changing browser requests must come from configured frontend origins. Backend middleware validates the `Origin` header for `POST`, `PUT`, `PATCH` and `DELETE` requests and rejects disallowed origins.
 
-## Rate limiting
+The frontend uses a same-origin `/api/*` proxy, which further reduces cross-origin browser authentication complexity.
 
-The MVP leaves rate limiting at the deployment layer. For production, add API rate limits for:
-
-- registration
-- login
-- order creation
-- organizer mutations
+The Paystack webhook is a server-to-server callback and is protected independently with HMAC-SHA512 signature validation.
 
 ## Payment security
 
-The demo checkout does not process real funds. For real payment:
+EventFlow uses Paystack Test Mode for the current capstone deployment.
 
-1. Create a payment intent.
-2. Redirect to provider checkout.
-3. Receive provider webhook.
-4. Verify signature.
-5. Query provider transaction status.
-6. Mark order paid only after server-side verification.
-7. Issue tickets once.
-8. Make webhook processing idempotent.
+The backend:
 
-Never trust a frontend "payment successful" flag.
+1. Generates the payment reference.
+2. Initializes the Paystack transaction.
+3. Keeps the Paystack secret server-side.
+4. Redirects the customer to Paystack checkout.
+5. Verifies the transaction on the server.
+6. Validates reference, amount and currency.
+7. Validates the signed webhook.
+8. Finalizes the order idempotently.
+9. Issues tickets exactly once.
+10. Releases reserved inventory for failed/reversed pending payments.
+
+The customer callback is not trusted as proof of payment; it triggers server-side verification.
+
+## Inventory integrity
+
+Order creation runs inside a Prisma transaction. Remaining inventory is conditionally decremented only when enough stock remains. Failed or reversed pending orders release their reservation using an idempotent state transition.
+
+## Ticket integrity
+
+Tickets have unique codes and QR tokens. Tickets are issued only after confirmed payment. Voided tickets cannot be activated unless the order is paid and the event is not cancelled.
+
+## Auditability
+
+Administrative management actions write audit records containing the actor, action, entity, entity ID and optional metadata.
+
+## Rate limiting
+
+The current repository does not implement an application-level rate limiter. Production deployment should add rate limits/WAF controls for at least:
+
+- registration;
+- login;
+- order creation;
+- payment verification;
+- organizer mutations;
+- admin mutations;
+- check-in endpoints.
+
+## Production requirements
+
+Before live-money operation:
+
+- Use a live Paystack secret only after merchant activation.
+- Keep all payment secrets server-side.
+- Use HTTPS everywhere.
+- Restrict trusted frontend origins.
+- Enable rate limiting/WAF controls.
+- Monitor webhook failures and payment-state anomalies.
+- Use managed PostgreSQL backups and monitoring.
+- Remove development/demo credentials and seeded demo data.
