@@ -4,6 +4,8 @@ import { errorResponse, handleError, ok } from "@/lib/http";
 
 const ROLES = ["ATTENDEE", "ORGANIZER", "ADMIN"] as const;
 type RoleValue = (typeof ROLES)[number];
+const ACCOUNT_STATUSES = ["ACTIVE", "SUSPENDED", "DELETED", "ALL"] as const;
+type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 
 function positiveInt(value: string | null, fallback: number, maximum: number) {
   const parsed = Number(value);
@@ -22,37 +24,23 @@ export async function GET(request: Request) {
     const pageSize = positiveInt(url.searchParams.get("pageSize"), 20, 100);
     const q = url.searchParams.get("q")?.trim();
     const roleParam = url.searchParams.get("role")?.trim().toUpperCase();
+    const statusParam = (url.searchParams.get("status")?.trim().toUpperCase() || "ACTIVE") as AccountStatus;
 
-    if (roleParam && !ROLES.includes(roleParam as RoleValue)) {
-      return errorResponse("INVALID_ROLE", "Role must be ATTENDEE, ORGANIZER, or ADMIN.", 400);
-    }
+    if (roleParam && !ROLES.includes(roleParam as RoleValue)) return errorResponse("INVALID_ROLE", "Role must be ATTENDEE, ORGANIZER, or ADMIN.", 400);
+    if (!ACCOUNT_STATUSES.includes(statusParam)) return errorResponse("INVALID_STATUS", "Status must be ACTIVE, SUSPENDED, DELETED, or ALL.", 400);
 
     const role = roleParam as RoleValue | undefined;
+    const statusWhere = statusParam === "ACTIVE" ? { suspendedAt: null, deletedAt: null } : statusParam === "SUSPENDED" ? { suspendedAt: { not: null }, deletedAt: null } : statusParam === "DELETED" ? { deletedAt: { not: null } } : {};
     const where = {
+      ...statusWhere,
       ...(role ? { role } : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: "insensitive" as const } },
-              { email: { contains: q, mode: "insensitive" as const } },
-              { id: { contains: q, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
+      ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { email: { contains: q, mode: "insensitive" as const } }, { id: { contains: q, mode: "insensitive" as const } }] } : {}),
     };
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: { select: { events: true, orders: true, auditLogs: true } },
-        },
+        select: { id: true, name: true, email: true, role: true, suspendedAt: true, suspensionReason: true, deletedAt: true, createdAt: true, updatedAt: true, _count: { select: { events: true, orders: true, auditLogs: true } } },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -61,7 +49,5 @@ export async function GET(request: Request) {
     ]);
 
     return ok({ users, pagination: { page, pageSize, total, pages: Math.ceil(total / pageSize) } });
-  } catch (error) {
-    return handleError(error);
-  }
+  } catch (error) { return handleError(error); }
 }
