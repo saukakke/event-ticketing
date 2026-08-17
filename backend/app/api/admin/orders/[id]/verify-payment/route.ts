@@ -25,7 +25,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     }
 
     const finalized = await finalizePaystackOrder(order.paymentReference);
-
     if (!finalized) {
       return errorResponse("PAYMENT_VERIFICATION_INCOMPLETE", "The payment could not be finalized. Please verify the transaction again.", 409);
     }
@@ -47,7 +46,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       },
     });
 
-    return ok({ data: finalized, message: "Payment verified and order marked as paid. Tickets have been issued." });
+    return ok(finalized);
   } catch (error) {
     return handleError(error);
   }
