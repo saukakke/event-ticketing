@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 const PAYSTACK_API_URL = "https://api.paystack.co";
+const PAYSTACK_TIMEOUT_MS = 15_000;
 
 function getSecretKey() {
   const key = process.env.PAYSTACK_SECRET_KEY;
@@ -9,6 +10,10 @@ function getSecretKey() {
     throw new Error("PAYSTACK_SECRET_KEY must start with sk_test_ or sk_live_.");
   }
   return key;
+}
+
+function requestSignal() {
+  return AbortSignal.timeout(PAYSTACK_TIMEOUT_MS);
 }
 
 export type PaystackTransaction = {
@@ -48,6 +53,7 @@ export async function initializePaystackTransaction(input: {
       metadata: input.metadata,
     }),
     cache: "no-store",
+    signal: requestSignal(),
   });
 
   const payload = (await response.json()) as PaystackResponse<{
@@ -72,6 +78,7 @@ export async function verifyPaystackTransaction(reference: string) {
         Authorization: `Bearer ${getSecretKey()}`,
       },
       cache: "no-store",
+      signal: requestSignal(),
     }
   );
 
@@ -82,6 +89,41 @@ export async function verifyPaystackTransaction(reference: string) {
   }
 
   return payload.data;
+}
+
+export async function refundPaystackTransaction(input: {
+  transaction: string;
+  amountKobo: number;
+  currency: string;
+}) {
+  const response = await fetch(`${PAYSTACK_API_URL}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getSecretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transaction: input.transaction,
+      amount: input.amountKobo,
+      currency: input.currency,
+    }),
+    cache: "no-store",
+    signal: requestSignal(),
+  });
+
+  const payload = (await response.json()) as PaystackResponse<{
+    transaction?: { reference?: string };
+    reference?: string;
+  } | null>;
+
+  if (!response.ok || !payload.status) {
+    throw new Error(payload.message || "Paystack refund failed.");
+  }
+
+  return {
+    providerReference: payload.data?.transaction?.reference || payload.data?.reference || input.transaction,
+    message: payload.message,
+  };
 }
 
 export function verifyPaystackWebhookSignature(rawBody: string, signature: string | null) {
