@@ -20,6 +20,33 @@ export async function releaseReservedStock(orderId: string) {
   );
 }
 
+export async function handlePaystackReversal(reference: string) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { paymentReference: reference }, include: { items: true } });
+    if (!order) return null;
+    if (order.status === "PENDING") {
+      const claimed = await tx.order.updateMany({ where: { id: order.id, status: "PENDING" }, data: { status: "FAILED" } });
+      if (claimed.count === 1) {
+        for (const item of order.items) {
+          await tx.ticketType.update({ where: { id: item.ticketTypeId }, data: { quantityRemaining: { increment: item.quantity } } });
+        }
+      }
+      return tx.order.findUnique({ where: { id: order.id } });
+    }
+
+    if (order.status !== "PAID") return order;
+
+    const claimed = await tx.order.updateMany({ where: { id: order.id, status: "PAID" }, data: { status: "FAILED" } });
+    if (claimed.count !== 1) return tx.order.findUnique({ where: { id: order.id } });
+
+    for (const item of order.items) {
+      await tx.ticketType.update({ where: { id: item.ticketTypeId }, data: { quantityRemaining: { increment: item.quantity } } });
+    }
+    await tx.ticket.updateMany({ where: { orderId: order.id }, data: { status: "VOID", checkedIn: false, checkedInAt: null } });
+    return tx.order.findUnique({ where: { id: order.id } });
+  }, { timeout: 15000 });
+}
+
 async function issueTickets(tx: Prisma.TransactionClient, orderId: string) {
   const existing = await tx.ticket.count({ where: { orderId } });
   if (existing > 0) return;
