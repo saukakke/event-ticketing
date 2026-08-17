@@ -11,156 +11,141 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Paystack](https://img.shields.io/badge/Paystack-Test%20Mode-0BA4DB)](https://paystack.com/)
 [![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=111111)](https://render.com/)
-[![Zod](https://img.shields.io/badge/Zod-4.1.12-3E67B1)](https://zod.dev/)
-[![JWT](https://img.shields.io/badge/Auth-JWT-000000)](https://jwt.io/)
 
 > **Production-Ready Capstone Project — 3MTT NextGen**
 
-EventFlow is a full-stack digital event ticketing and management platform built by **Yasin Muhammed Tukur**. It provides a complete workflow for event discovery, ticket inventory, order creation, Paystack Test Mode checkout, server-side payment verification, signed payment webhooks, digital ticket issuance, QR-code verification, and organizer sales management.
+EventFlow is a full-stack event ticketing and management platform built by **Yasin Muhammed Tukur**. It covers event discovery, ticket inventory, authenticated ordering, Paystack Test Mode checkout, server-side payment verification, signed webhooks, digital QR tickets, organizer management and administrator controls.
 
 ## Project information
 
 | Item | Details |
 |---|---|
-| **Project** | EventFlow — Event Ticketing Platform |
-| **Author** | Yasin Muhammed Tukur |
-| **3MTT status** | Production-Ready Capstone Project — 3MTT NextGen |
-| **GitHub** | [github.com/saukkake](https://github.com/saukkake) |
-| **Repository** | [github.com/saukkake/event-ticketing](https://github.com/saukkake/event-ticketing) |
-| **LinkedIn** | [linkedin.com/in/yasin-muhammed-tukur](https://www.linkedin.com/in/yasin-muhammed-tukur) |
-| **Email** | [saukakke@gmail.com](mailto:saukakke@gmail.com) |
-| **License** | MIT |
+| Project | EventFlow — Event Ticketing Platform |
+| Author | Yasin Muhammed Tukur |
+| Program | 3MTT NextGen Capstone |
+| Repository | https://github.com/saukkake/event-ticketing |
+| Email | saukakke@gmail.com |
+| License | MIT |
 
 ## Live deployment
 
-- **Frontend:** https://event-ticketing-x3og.onrender.com
-- **Backend API:** https://event-ticketing-backend-yzzr.onrender.com
-- **Backend health endpoint:** https://event-ticketing-backend-yzzr.onrender.com/api/health
-- **Paystack webhook:** https://event-ticketing-backend-yzzr.onrender.com/api/payments/paystack/webhook
+- Frontend: `https://event-ticketing-x3og.onrender.com`
+- Backend: `https://event-ticketing-backend-yzzr.onrender.com`
+- Health: `https://event-ticketing-backend-yzzr.onrender.com/api/health`
+- Paystack webhook: `https://event-ticketing-backend-yzzr.onrender.com/api/payments/paystack/webhook`
 
-The application is deployed as two independent Render services. Both production containers listen on **port `10000`**. The frontend uses a same-origin `/api/*` proxy to the backend, which avoids browser-side cross-origin authentication problems.
+The deployment uses two independent Render services. Both containers listen on port `10000`. The frontend exposes a same-origin `/api/*` proxy to the backend, keeping the backend origin out of browser-side configuration.
 
-## Problem
-
-Event organizers often rely on informal sales channels, manual payment confirmation, spreadsheets, printed tickets, and fragmented attendee communication. These processes make inventory tracking, payment reconciliation, attendee verification, and event administration difficult.
-
-## Solution
-
-EventFlow centralizes the event-ticketing lifecycle:
+## Core workflow
 
 ```text
-Event discovery
+Register / Login
       ↓
-Event details
+Discover published events
       ↓
-Ticket selection
+Open /events/:id
       ↓
-Order creation + inventory reservation
+Select ticket types
+      ↓
+Create order + reserve inventory
       ↓
 Paystack Test Mode checkout
       ↓
-Server-side verification / signed webhook
+Server verification / signed webhook
       ↓
-Order marked PAID
+Order becomes PAID
       ↓
-Digital ticket + QR code generated once
+Digital QR tickets issued once
       ↓
-Attendee ticket access / verification
+Dashboard / organizer / admin verification
 ```
 
-## Key features
+## Features
 
 ### Attendees
 
-- Account registration and secure login.
+- Registration and secure login.
 - Published event discovery and search.
-- Event and ticket-type details.
-- Quantity validation and inventory reservation.
+- Event detail pages with real-time remaining inventory.
+- Ticket quantity validation.
 - Paystack Test Mode checkout.
-- Server-side payment verification.
-- Payment-return callback handling.
-- Digital ticket generation after confirmed payment.
-- QR-code ticket access.
+- Server-side payment verification and customer callback handling.
+- Digital QR ticket issuance after confirmed payment.
+- Personal ticket dashboard.
 
 ### Organizers
 
-- Organizer role-based access.
-- Event creation and editing.
+- Organizer/admin role-based access.
+- Event creation and publishing.
 - Ticket type and inventory management.
-- Event publishing/unpublishing.
-- Sales statistics.
-- Recent order visibility for owned events.
+- Event ownership isolation.
+- Order and payment history.
+- Ticket management and check-in workflows.
 
-### Payment and ticket integrity
+### Administrators
 
-- Paystack transaction initialization from the backend.
-- Amount, currency, and payment-reference validation.
-- `charge.success` webhook processing.
-- HMAC-SHA512 Paystack webhook signature validation.
-- Idempotent `PENDING → PAID` finalization.
+- Platform overview and revenue metrics.
+- User management, role changes, suspension and soft deletion.
+- Order and payment administration.
+- Ticket activation/voiding.
+- Check-in management.
+- Audit logs.
+
+### Payment and integrity controls
+
+- Server-side Paystack initialization.
+- Exact payment reference, amount and currency validation.
+- HMAC-SHA512 webhook signature validation.
+- Idempotent payment finalization.
 - Idempotent failed/reversed payment handling.
-- Reserved inventory restoration after failed/reversed payments.
-- Digital tickets issued only after confirmed payment.
+- Transactional inventory reservation and restoration.
+- Digital tickets generated only after confirmed payment.
 
 ## Technology stack
 
-### Application
-
-![Next.js](https://img.shields.io/badge/Next.js-16.3.0-000000?logo=next.js&logoColor=white) ![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react&logoColor=111111) ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6?logo=typescript&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js&logoColor=white)
-
-### Data and validation
-
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?logo=postgresql&logoColor=white) ![Prisma](https://img.shields.io/badge/Prisma-6.17.1-2D3748?logo=prisma&logoColor=white) ![Zod](https://img.shields.io/badge/Zod-4.1.12-3E67B1)
-
-### Security and payments
-
-![JWT](https://img.shields.io/badge/JWT-Authentication-000000) ![bcryptjs](https://img.shields.io/badge/bcryptjs-Password%20Hashing-8B0000) ![Paystack](https://img.shields.io/badge/Paystack-Test%20Mode-0BA4DB)
-
-### Infrastructure and delivery
-
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white) ![Render](https://img.shields.io/badge/Render-Deployed-46E3B7?logo=render&logoColor=111111) ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI-2088FF?logo=github-actions&logoColor=white) ![npm](https://img.shields.io/badge/npm-Workspaces-CB3837?logo=npm&logoColor=white)
-
-## Architecture
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│                    EventFlow Frontend                    │
-│                  Next.js + React + TS                    │
-│                   Render · :10000                        │
-└──────────────────────────┬───────────────────────────────┘
-                           │ same-origin /api proxy
-                           ▼
-┌──────────────────────────────────────────────────────────┐
-│                     EventFlow Backend                    │
-│              Next.js API + TypeScript                    │
-│                   Render · :10000                        │
-│                                                          │
-│ Auth · Authorization · Orders · Inventory · Paystack     │
-└───────────────┬───────────────────────────┬──────────────┘
-                │                           │
-                ▼                           ▼
-        ┌───────────────┐          ┌──────────────────┐
-        │ PostgreSQL +  │          │ Paystack Test    │
-        │ Prisma        │          │ Mode API/Webhook │
-        └───────────────┘          └──────────────────┘
-```
+- **Frontend:** Next.js 16.3, React 19.2, TypeScript 5.8.
+- **Backend:** Next.js 16.3, TypeScript.
+- **Database:** PostgreSQL with Prisma 6.17.1.
+- **Authentication:** JWT sessions in HTTP-only cookies, `jose`, bcryptjs.
+- **Validation:** Zod.
+- **Payments:** Paystack Test Mode.
+- **QR:** `qrcode`.
+- **Infrastructure:** Docker, Render and GitHub Actions.
 
 ## Repository structure
 
 ```text
 event-ticketing/
-├── frontend/                    # Public Next.js web application
-├── backend/                     # Next.js API + Prisma service
+├── frontend/                    # Browser-facing Next.js application
+│   ├── app/
+│   │   ├── events/
+│   │   ├── dashboard/
+│   │   ├── organizer/
+│   │   ├── admin/
+│   │   └── api/[...path]/       # Same-origin backend proxy
+│   ├── components/
+│   └── lib/
+├── backend/                     # Next.js API + Prisma
 │   ├── app/api/
+│   │   ├── auth/
+│   │   ├── events/
+│   │   ├── orders/
+│   │   ├── payments/
+│   │   ├── organizer/
+│   │   └── admin/
 │   ├── lib/
 │   ├── prisma/
-│   └── tests/
+│   │   ├── migrations/
+│   │   ├── schema.prisma
+│   │   └── seed.js
+│   ├── tests/
+│   └── middleware.ts
 ├── docs/
 ├── .github/workflows/ci.yml
 ├── docker-compose.yml
 ├── .env.example
-├── LICENSE
 ├── PROJECT_INVENTORY.md
+├── LICENSE
 └── package.json
 ```
 
@@ -173,7 +158,7 @@ event-ticketing/
 - PostgreSQL 15+
 - Docker (optional)
 
-### Install dependencies
+### Install
 
 ```bash
 npm install
@@ -181,19 +166,20 @@ npm install
 
 ### Configure environment
 
-Copy `.env.example` to `.env` and configure the database, JWT secret, frontend/backend origins, and Paystack test secret.
+Copy `.env.example` to `.env` and set real local values:
 
 ```env
 DATABASE_URL="postgresql://postgres:password@localhost:5432/event_ticketing"
 JWT_SECRET="replace-with-a-long-random-secret"
 FRONTEND_URL="http://localhost:3000"
 BACKEND_URL="http://localhost:10000"
+NODE_ENV="development"
 PAYSTACK_SECRET_KEY="sk_test_your_real_test_secret"
 ```
 
-The Paystack secret must be obtained from your Paystack Dashboard. Never commit a real secret key.
+`BACKEND_URL` is a server-only frontend variable. Do not rename it to a `NEXT_PUBLIC_*` variable.
 
-### Database setup
+### Database
 
 ```bash
 npm run db:generate
@@ -201,103 +187,82 @@ npm run db:migrate
 npm run db:seed
 ```
 
-### Start both services
+### Run both services
 
 ```bash
 npm run dev
 ```
 
-Local services:
-
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:10000`
 
-Production containers both use port `10000` because Render provides separate service network namespaces.
+## Seeded demo accounts
 
-## Demo accounts
-
-The development seed creates:
+The seed script creates demo accounts using the same password for demonstration purposes:
 
 | Role | Email | Password |
 |---|---|---|
-| Organizer | `organizer@eventflow.local` | `Password123!` |
-| Attendee | `attendee@eventflow.local` | `Password123!` |
-| Admin | `admin@eventflow.local` | `Password123!` |
+| Organizer | `organizer@eventflow.com` | `Password123!` |
+| Organizer | `organizer2@eventflow.com` | `Password123!` |
+| Attendee | `attendee@eventflow.com` | `Password123!` |
+| Attendee | `attendee2@eventflow.com` | `Password123!` |
+| Attendee | `attendee3@eventflow.com` | `Password123!` |
+| Admin | `admin@eventflow.com` | `Password123!` |
 
-These are development credentials only. Do not retain seeded passwords in a production environment.
+These credentials are for development/capstone demonstration only. Do not use them in a production environment.
 
-## Paystack integration
+## Paystack Test Mode
 
-EventFlow uses **Paystack Test Mode** for the capstone demonstration. The secret key remains server-side.
-
-### Webhook
-
-Configure this URL in Paystack:
-
-```text
-https://event-ticketing-backend-yzzr.onrender.com/api/payments/paystack/webhook
-```
-
-The webhook:
-
-1. Validates `x-paystack-signature` using HMAC-SHA512.
-2. Accepts supported payment events.
-3. Verifies successful transactions against Paystack.
-4. Validates the local order reference, amount, and currency.
-5. Performs an idempotent payment-state transition.
-6. Issues digital tickets exactly once after successful payment.
-7. Releases reserved inventory for failed/reversed payments.
-
-### Customer callback
-
-The customer browser returns to:
+The secret key is server-side only. Configure the Paystack webhook as:
 
 ```text
-https://event-ticketing-x3og.onrender.com/dashboard?payment=return&reference=<reference>
+https://<backend-domain>/api/payments/paystack/webhook
 ```
 
-The dashboard invokes the backend payment callback for server-side verification. The callback is a customer-return mechanism; the webhook remains the asynchronous server-to-server payment notification path.
+The webhook validates `x-paystack-signature`, verifies successful transactions against Paystack, validates the local reference/amount/currency, and finalizes the order idempotently.
 
-### Test mode
+The customer callback is:
 
-Test mode does not process real funds. Use a real `sk_test_...` key from your Paystack account when testing the deployed application. Do not place the secret key in frontend environment variables.
+```text
+https://<frontend-domain>/dashboard?payment=return&reference=<reference>
+```
+
+A callback is not treated as the sole source of truth; the backend verifies the transaction before marking an order paid.
 
 ## Testing
 
-The backend includes executable tests for:
-
-- request validation;
-- slug generation;
-- valid Paystack HMAC-SHA512 signatures;
-- invalid Paystack signatures;
-- missing Paystack signatures.
-
-Run the tests with:
+Run the backend tests:
 
 ```bash
 npm test
 ```
 
-The GitHub Actions workflow is configured to run the test suite before the production build.
+Build the complete workspace:
 
-For the complete integration and security test matrix, see [`docs/TESTING.md`](docs/TESTING.md).
+```bash
+npm run build
+```
+
+The CI workflow runs dependency installation, Prisma client generation, migrations, tests and the production build.
+
+See [`docs/TESTING.md`](docs/TESTING.md) for the full verification matrix.
 
 ## Security
 
 Implemented controls include:
 
-- Server-side Zod validation.
-- Normalized email handling.
+- Zod request validation.
+- Lowercase email normalization.
 - bcrypt password hashing.
 - HTTP-only session cookies.
-- JWT issuer/audience/subject validation.
+- JWT issuer, audience and expiry validation.
 - Server-side role authorization.
-- Origin validation for browser state-changing requests.
-- Paystack HMAC-SHA512 webhook validation.
-- Payment amount/currency/reference validation.
-- Idempotent payment finalization.
-- Idempotent inventory restoration.
-- No Paystack secret exposure to the frontend.
+- Suspended/soft-deleted account checks.
+- Browser origin validation for state-changing API requests.
+- Paystack HMAC-SHA512 webhook verification.
+- Payment amount/currency/reference verification.
+- Idempotent payment and inventory transitions.
+- No Paystack secret in frontend code.
 
 See [`docs/SECURITY.md`](docs/SECURITY.md) and [`docs/AUDIT.md`](docs/AUDIT.md).
 
@@ -305,50 +270,31 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) and [`docs/AUDIT.md`](docs/AUDIT.md).
 
 | Document | Purpose |
 |---|---|
-| [`docs/CAPSTONE.md`](docs/CAPSTONE.md) | 3MTT capstone project specification, scope and demonstration flow |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Application architecture and request/payment flows |
-| [`docs/API.md`](docs/API.md) | API endpoints and request/response behavior |
-| [`docs/DATABASE.md`](docs/DATABASE.md) | Database entities, relationships and constraints |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Security model and controls |
-| [`docs/TESTING.md`](docs/TESTING.md) | Unit, integration, security and deployment test matrix |
-| [`docs/AUDIT.md`](docs/AUDIT.md) | Implementation and documentation audit |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Render, database and Paystack deployment configuration |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Key architectural and product decisions |
-| [`PROJECT_INVENTORY.md`](PROJECT_INVENTORY.md) | Source-tree inventory |
+| [`docs/AUDIT.md`](docs/AUDIT.md) | Repository audit, corrections and verification status |
+| [`docs/API.md`](docs/API.md) | Current API endpoint reference |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Current application and payment architecture |
+| [`docs/CAPSTONE.md`](docs/CAPSTONE.md) | 3MTT capstone specification and demonstration flow |
+| [`docs/DATABASE.md`](docs/DATABASE.md) | Prisma models, relationships and constraints |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Architectural/product decisions |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Render, Docker, environment and database deployment |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Security controls |
+| [`docs/TESTING.md`](docs/TESTING.md) | Automated and manual verification matrix |
+| [`PROJECT_INVENTORY.md`](PROJECT_INVENTORY.md) | Repository structure and route inventory |
 
 ## Production readiness
 
-Before opening the application to real payments:
+Before enabling live payments:
 
-- Replace the Paystack test secret with a live secret after merchant activation.
-- Configure the live Paystack webhook over HTTPS.
-- Use a managed PostgreSQL database with backups.
-- Run `prisma migrate deploy` during deployment.
-- Use a cryptographically random `JWT_SECRET`.
-- Remove development seed credentials.
-- Restrict browser origins to the real frontend origin.
-- Configure rate limiting/WAF and application monitoring.
-- Add transactional email if ticket delivery by email is required.
-- Add object storage if event image uploads are required.
+1. Replace the Paystack Test Mode secret with an appropriate live secret after merchant activation.
+2. Configure the live webhook over HTTPS.
+3. Use a managed PostgreSQL database with backups.
+4. Use a cryptographically random JWT secret.
+5. Remove development demo credentials/data.
+6. Restrict `FRONTEND_URL` to trusted production origins.
+7. Configure monitoring, rate limiting and WAF controls.
+8. Verify the full payment, inventory, ticket and check-in flows in staging.
 
-The current capstone deployment is intentionally a **Paystack Test Mode** environment and should not be represented as a live-money payment system.
-
-## Screenshots
-
-The final application screenshots can be added to `docs/screenshots/` and referenced here after capture from the deployed frontend. No screenshot assets were bundled in this archive because the deployed Render frontend did not return a capturable page during the final verification attempt.
-
-## Capstone positioning
-
-EventFlow is designed as a complete 3MTT NextGen capstone demonstration rather than a collection of disconnected CRUD screens. The strongest demonstration is the end-to-end path:
-
-```text
-Register → Login → Discover Event → Select Ticket
-→ Create Order → Paystack Test Checkout
-→ Server Verification/Webhook → PAID Order
-→ Digital Ticket → QR Code
-```
-
-This demonstrates frontend engineering, backend API design, relational data modelling, authentication, authorization, payment integration, webhook security, transactional inventory handling, idempotency, and deployment architecture in one coherent product.
+The current capstone deployment is a **Paystack Test Mode** environment and must not be represented as a live-money payment system.
 
 ## Author
 
