@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { api, Event, formatDate, formatNaira } from "@/lib/api";
 
@@ -13,24 +12,56 @@ export function EventDetail({ event }: { event: Event }) {
   const total = selected.reduce((sum, ticket) => sum + ticket.priceKobo * (quantities[ticket.id] || 0), 0);
 
   function change(id: string, amount: number, max: number) {
-    setQuantities((current) => ({ ...current, [id]: Math.max(0, Math.min(max, (current[id] || 0) + amount)) }));
+    setQuantities((current) => ({
+      ...current,
+      [id]: Math.max(0, Math.min(max, (current[id] || 0) + amount)),
+    }));
   }
 
   async function checkout() {
     setError("");
+    if (!selected.length) {
+      setError("Select at least one ticket before continuing.");
+      return;
+    }
+
     setBusy(true);
     try {
-      const order = await api<{ id: string }>("/orders", {
+      const result = await api<{
+        orderId: string;
+        reference: string;
+        authorizationUrl?: string;
+        accessCode?: string;
+        paymentConfirmed?: boolean;
+        status?: string;
+      }>("/orders", {
         method: "POST",
         body: JSON.stringify({
           eventId: event.id,
-          items: selected.map((ticket) => ({ ticketTypeId: ticket.id, quantity: quantities[ticket.id] })),
+          items: selected.map((ticket) => ({
+            ticketTypeId: ticket.id,
+            quantity: quantities[ticket.id],
+          })),
         }),
       });
-      window.location.href = `/dashboard?order=${order.id}`;
+
+      // Normal payment initialization returns a Paystack authorization URL.
+      // Redirecting to it is required to complete the customer payment flow.
+      if (result.authorizationUrl) {
+        window.location.assign(result.authorizationUrl);
+        return;
+      }
+
+      // The backend can also confirm payment immediately when Paystack returns
+      // a successful transaction during initialization.
+      if (result.paymentConfirmed) {
+        window.location.assign(`/dashboard?payment=return&reference=${encodeURIComponent(result.reference)}`);
+        return;
+      }
+
+      throw new Error("Payment checkout could not be initialized. Please try again.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to complete checkout.");
-    } finally {
       setBusy(false);
     }
   }
@@ -71,11 +102,11 @@ export function EventDetail({ event }: { event: Event }) {
           <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 18 }}>
             <div className="meta">Total</div>
             <h2>{formatNaira(total)}</h2>
-            {error && <p className="error">{error}</p>}
+            {error && <p className="error" role="alert">{error}</p>}
             <button className="btn btn-primary" style={{ width: "100%" }} disabled={!selected.length || busy} onClick={checkout}>
-              {busy ? "Processing…" : "Get tickets"}
+              {busy ? "Redirecting to payment…" : "Get tickets"}
             </button>
-            <p style={{ fontSize: ".8rem" }}>Demo checkout for capstone demonstration. No real payment is processed.</p>
+            <p style={{ fontSize: ".8rem" }}>Paystack Test Mode is used for the capstone demonstration. No live funds are processed.</p>
           </div>
         </aside>
       </section>
