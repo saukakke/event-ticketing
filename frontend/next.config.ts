@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
-const backendUrl = (
-  process.env.BACKEND_URL || "https://event-ticketing-backend-yzzr.onrender.com"
-).replace(/\/$/, "");
+const backendUrl = "https://event-ticketing-backend-yzzr.onrender.com";
 
 const nextConfig: NextConfig = {
   output: "standalone",
