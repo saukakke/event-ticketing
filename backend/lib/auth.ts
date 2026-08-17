@@ -37,10 +37,8 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   try {
     const { payload } = await jwtVerify(token, secret, { algorithms: [JWT_ALGORITHM], issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
     if (typeof payload.sub !== "string" || typeof payload.email !== "string" || typeof payload.name !== "string" || typeof payload.role !== "string" || !["ATTENDEE", "ORGANIZER", "ADMIN"].includes(payload.role)) return null;
-    const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, name: true, role: true, suspendedAt: true, deletedAt: true } });
-    if (!user || user.email !== payload.email || user.name !== payload.name || user.role !== payload.role || user.suspendedAt || user.deletedAt) {
-      return null;
-    }
+    const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, name: true, role: true } });
+    if (!user || user.email !== payload.email || user.name !== payload.name || user.role !== payload.role) return null;
     return { id: user.id, email: user.email, name: user.name, role: user.role } as AuthUser;
   } catch {
     return null;
