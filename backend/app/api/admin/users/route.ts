@@ -13,40 +13,21 @@ export async function GET(request: Request) {
     const pageSize = Math.min(Math.max(Number(url.searchParams.get("pageSize") || 20), 1), 100);
     const q = url.searchParams.get("q")?.trim();
     const role = url.searchParams.get("role");
+    const status = url.searchParams.get("status") || "ACTIVE";
     const where = {
       ...(role && ["ATTENDEE", "ORGANIZER", "ADMIN"].includes(role) ? { role: role as any } : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: "insensitive" as const } },
-              { email: { contains: q, mode: "insensitive" as const } },
-              { id: { contains: q, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
+      ...(status === "SUSPENDED" ? { suspendedAt: { not: null }, deletedAt: null } : status === "DELETED" ? { deletedAt: { not: null } } : status === "ALL" ? {} : { deletedAt: null, suspendedAt: null }),
+      ...(q ? { OR: [
+        { name: { contains: q, mode: "insensitive" as const } },
+        { email: { contains: q, mode: "insensitive" as const } },
+        { id: { contains: q, mode: "insensitive" as const } },
+      ] } : {}),
     };
 
     const [data, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: { select: { events: true, orders: true, auditLogs: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+      prisma.user.findMany({ where, select: { id: true, name: true, email: true, role: true, suspendedAt: true, suspensionReason: true, deletedAt: true, createdAt: true, updatedAt: true, _count: { select: { events: true, orders: true, auditLogs: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
       prisma.user.count({ where }),
     ]);
-
     return ok({ data, pagination: { page, pageSize, total, pages: Math.ceil(total / pageSize) } });
-  } catch (error) {
-    return handleError(error);
-  }
+  } catch (error) { return handleError(error); }
 }
