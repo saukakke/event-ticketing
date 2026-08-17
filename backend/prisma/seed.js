@@ -4,6 +4,7 @@ const QRCode = require("qrcode");
 
 const prisma = new PrismaClient();
 const PASSWORD = "Password123!";
+const DEMO_REFERENCE_PREFIX = "DEMO-";
 
 function iso(daysFromNow, hour = 10) {
   const date = new Date();
@@ -152,6 +153,35 @@ async function createSeedOrder({
   return order;
 }
 
+async function syncDemoInventory() {
+  const demoOrders = await prisma.order.findMany({
+    where: { paymentReference: { startsWith: DEMO_REFERENCE_PREFIX } },
+    include: { items: true },
+  });
+
+  const usage = new Map();
+  for (const order of demoOrders) {
+    // Pending orders reserve inventory; failed and refunded orders do not.
+    const consumesInventory = order.status === OrderStatus.PENDING || order.status === OrderStatus.PAID;
+    if (!consumesInventory) continue;
+
+    for (const item of order.items) {
+      usage.set(item.ticketTypeId, (usage.get(item.ticketTypeId) || 0) + item.quantity);
+    }
+  }
+
+  const ticketTypes = await prisma.ticketType.findMany({
+    where: { id: { in: Array.from(usage.keys()) } },
+  });
+
+  for (const ticketType of ticketTypes) {
+    await prisma.ticketType.update({
+      where: { id: ticketType.id },
+      data: { quantityRemaining: Math.max(0, ticketType.quantity - (usage.get(ticketType.id) || 0)) },
+    });
+  }
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(PASSWORD, 12);
 
@@ -207,6 +237,7 @@ async function main() {
       startAt: iso(60, 9),
       endAt: iso(60, 17),
       status: EventStatus.PUBLISHED,
+      organizerId: organizer.id,
       ticketTypes: [
         { name: "Regular", description: "General admission.", priceKobo: 500000, quantity: 250 },
         { name: "VIP", description: "Priority seating and networking access.", priceKobo: 1500000, quantity: 50 },
@@ -221,6 +252,7 @@ async function main() {
       startAt: iso(90, 10),
       endAt: iso(90, 16),
       status: EventStatus.PUBLISHED,
+      organizerId: organizer.id,
       ticketTypes: [
         { name: "General Admission", description: "All meetup sessions.", priceKobo: 200000, quantity: 150 },
         { name: "Workshop Pass", description: "Includes the practical workshop.", priceKobo: 500000, quantity: 50 },
@@ -235,6 +267,7 @@ async function main() {
       startAt: iso(120, 9),
       endAt: iso(120, 18),
       status: EventStatus.PUBLISHED,
+      organizerId: organizer.id,
       ticketTypes: [
         { name: "Standard", description: "Full-day forum access.", priceKobo: 300000, quantity: 300 },
         { name: "Founder Pass", description: "Premium founder networking access.", priceKobo: 1000000, quantity: 75 },
@@ -249,6 +282,7 @@ async function main() {
       startAt: iso(150, 10),
       endAt: iso(150, 14),
       status: EventStatus.DRAFT,
+      organizerId: organizer.id,
       ticketTypes: [
         { name: "Early Access", description: "Draft event ticket type.", priceKobo: 100000, quantity: 100 },
       ],
@@ -262,22 +296,36 @@ async function main() {
       startAt: iso(30, 11),
       endAt: iso(30, 15),
       status: EventStatus.CANCELLED,
+      organizerId: organizer.id,
       ticketTypes: [
         { name: "General", description: "Cancelled-event demonstration ticket.", priceKobo: 150000, quantity: 100 },
+      ],
+    },
+    {
+      title: "Northern Community Builders Meetup",
+      slug: "northern-community-builders-meetup",
+      description: "Demo event owned by a second organizer to test organizer isolation.",
+      venue: "Kaduna Tech Space",
+      city: "Kaduna",
+      startAt: iso(75, 11),
+      endAt: iso(75, 16),
+      status: EventStatus.PUBLISHED,
+      organizerId: organizerTwo.id,
+      ticketTypes: [
+        { name: "Community Pass", description: "General access.", priceKobo: 250000, quantity: 120 },
       ],
     },
   ];
 
   const events = {};
   for (const definition of eventDefinitions) {
-    events[definition.slug] = await upsertEvent(organizer, definition);
+    events[definition.slug] = await upsertEvent(definition.organizerId, definition);
   }
 
   const demoEvent = events["northern-digital-innovation-summit"];
   const meetupEvent = events["zaria-software-developers-meetup"];
   const startupEvent = events["northern-entrepreneurship-startup-forum"];
 
-  // Keep demo inventory consistent with the orders created below.
   const regular = demoEvent.ticketTypes.Regular;
   const vip = demoEvent.ticketTypes.VIP;
   const general = meetupEvent.ticketTypes["General Admission"];
@@ -381,26 +429,41 @@ async function main() {
     },
   });
 
-  // Seed audit entries for the administration dashboard.
+  await syncDemoInventory();
+
+  const checkedInTicket = await prisma.ticket.findUnique({ where: { code: "DEMO-DEMO-PAID-CHECKED-IN-001-1" } });
   const auditEvents = [
     [admin.id, "SEED_PAYMENT_VERIFIED", "Order", "DEMO-PAID-CHECKED-IN-001"],
     [admin.id, "SEED_REFUND_PROCESSED", "Order", "DEMO-REFUNDED-005"],
-    [organizer.id, "SEED_TICKET_CHECKED_IN", "Ticket", "DEMO-PAID-CHECKED-IN-001-1"],
   ];
+
+  if (checkedInTicket) {
+    auditEvents.push([organizer.id, "SEED_TICKET_CHECKED_IN", "Ticket", checkedInTicket.id]);
+  }
 
   for (const [actorId, action, entity, entityId] of auditEvents) {
     const existing = await prisma.auditLog.findFirst({ where: { actorId, action, entity, entityId } });
     if (!existing) {
-      await prisma.auditLog.create({ data: { actorId, action, entity, entityId, metadata: { seeded: true } } });
+      await prisma.auditLog.create({
+        data: {
+          actorId,
+          action,
+          entity,
+          entityId,
+          metadata: { seeded: true },
+        },
+      });
     }
   }
 
-  console.log("Seed completed with users, events, ticket types, orders, tickets, refunds and audit data.");
+  console.log("Seed completed with comprehensive demo data.");
   console.log("Demo login password for all seeded users: Password123!");
-  console.log("Order statuses: PENDING, PAID, FAILED, REFUNDED");
-  console.log("Ticket statuses: ACTIVE and VOID; one active ticket is checked in.");
-  console.log("Refund statuses: PENDING, PROCESSING, PROCESSED, FAILED");
-  console.log("Event statuses: DRAFT, PUBLISHED, CANCELLED");
+  console.log("Users: 1 admin, 2 organizers, 3 attendees.");
+  console.log("Events: PUBLISHED, DRAFT and CANCELLED, including a second organizer's event.");
+  console.log("Orders: PENDING, PAID, FAILED and REFUNDED.");
+  console.log("Tickets: ACTIVE and VOID, including a checked-in ticket.");
+  console.log("Refunds: PENDING, PROCESSING, PROCESSED and FAILED.");
+  console.log("Audit logs include seeded payment, refund and check-in activity.");
 }
 
 main()
