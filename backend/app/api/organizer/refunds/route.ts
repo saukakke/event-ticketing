@@ -43,11 +43,13 @@ export async function POST(request: Request) {
       });
 
       const result = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.order.updateMany({ where: { id: orderId, status: "PAID" }, data: { status: "REFUNDED" } });
+        if (claimed.count !== 1) throw new Error("ORDER_NOT_REFUNDABLE");
+
         for (const item of order.items) {
           await tx.ticketType.update({ where: { id: item.ticketTypeId }, data: { quantityRemaining: { increment: item.quantity } } });
         }
         await tx.ticket.updateMany({ where: { orderId }, data: { status: "VOID", checkedIn: false, checkedInAt: null } });
-        await tx.order.update({ where: { id: orderId, status: "PAID" }, data: { status: "REFUNDED" } });
         return tx.refund.update({ where: { id: refund.id }, data: { status: "PROCESSED", providerReference: provider.providerReference } });
       });
 
@@ -62,6 +64,9 @@ export async function POST(request: Request) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_NOT_REFUNDABLE") {
+      return errorResponse("INVALID_ORDER_STATUS", "The order is no longer eligible for a refund.", 409);
+    }
     return handleError(error);
   }
 }
