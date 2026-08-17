@@ -1,0 +1,4 @@
+import { getAuthUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { errorResponse, handleError, ok } from "@/lib/http";
+export async function GET(request: Request){try{const user=await getAuthUser();if(!user)return errorResponse("UNAUTHENTICATED","Sign in required.",401);if(user.role!=="ADMIN")return errorResponse("FORBIDDEN","Admin access required.",403);const url=new URL(request.url);const page=Math.max(Number(url.searchParams.get("page")||1),1);const pageSize=Math.min(Math.max(Number(url.searchParams.get("pageSize")||30),1),100);const [logs,total]=await Promise.all([prisma.auditLog.findMany({include:{actor:{select:{id:true,name:true,email:true,role:true}}},orderBy:{createdAt:"desc"},skip:(page-1)*pageSize,take:pageSize}),prisma.auditLog.count()]);return ok({logs,pagination:{page,pageSize,total,pages:Math.ceil(total/pageSize)}})}catch(error){return handleError(error)}}
