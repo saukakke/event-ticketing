@@ -26,7 +26,8 @@ export default function OrganizerPage() {
   return (
     <main className="dashboard">
       <div className="container">
-        <div className="dashboard-head"><div><div className="eyebrow">Organizer</div><h1 style={{ fontSize: "3rem" }}>Manage your events</h1></div><Link className="btn btn-primary" href="/organizer/new">Create event</Link></div>
+        <div className="dashboard-head"><div><div className="eyebrow">Organizer / Admin</div><h1 style={{ fontSize: "3rem" }}>Manage your events</h1></div><Link className="btn btn-primary" href="/organizer/new">Create event</Link></div>
+        <nav className="card" style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.5rem" }} aria-label="Management"><Link className="btn btn-secondary" href="/organizer/orders">Orders</Link><Link className="btn btn-secondary" href="/organizer/tickets">Tickets</Link><Link className="btn btn-secondary" href="/organizer/payments">Payment history</Link></nav>
         <div className="stats">
           <div className="stat"><span className="meta">Sales</span><strong>{formatNaira(sales)}</strong></div>
           <div className="stat"><span className="meta">Orders</span><strong>{orders}</strong></div>
@@ -34,7 +35,7 @@ export default function OrganizerPage() {
         </div>
         <div className="table-wrap">
           <table><thead><tr><th>Event</th><th>Status</th><th>Date</th><th>Orders</th><th>Sales</th></tr></thead>
-          <tbody>{events.map((event) => <tr key={event.id}><td><strong>{event.title}</strong><div className="meta">{event.city}</div></td><td>{event.status}</td><td>{formatDate(event.startAt)}</td><td>{event.ordersCount}</td><td>{formatNaira(event.salesKobo)}</td></tr>)}</tbody></table>
+          <tbody>{events.map((event) => <tr key={event.id}><td><Link href={`/events/${event.id}`}><strong>{event.title}</strong></Link><div className="meta">{event.city}</div></td><td>{event.status}</td><td>{formatDate(event.startAt)}</td><td>{event.ordersCount}</td><td>{formatNaira(event.salesKobo)}</td></tr>)}</tbody></table>
         </div>
       </div>
     </main>
