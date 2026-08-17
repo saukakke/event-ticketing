@@ -42,6 +42,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (id === actor.id && role !== "ADMIN") return errorResponse("SELF_ACCOUNT_PROTECTION", "You cannot demote your own administrator account.", 409);
       const target = await prisma.user.findUnique({ where: { id }, select: { id: true, name: true, role: true } });
       if (!target) return errorResponse("NOT_FOUND", "User not found.", 404);
+
+      if (target.role === "ADMIN" && role !== "ADMIN") {
+        const otherActiveAdminCount = await prisma.user.count({
+          where: {
+            role: "ADMIN",
+            id: { not: id },
+            suspendedAt: null,
+            deletedAt: null,
+          },
+        });
+        if (otherActiveAdminCount === 0) {
+          return errorResponse("LAST_ADMIN_PROTECTION", "The last active administrator cannot be demoted.", 409);
+        }
+      }
+
       const updated = await prisma.$transaction(async (tx) => {
         const next = await tx.user.update({ where: { id }, data: { role }, select: { id: true, name: true, email: true, role: true, suspendedAt: true, deletedAt: true, createdAt: true, updatedAt: true } });
         await tx.auditLog.create({ data: { actorId: actor.id, action: "USER_ROLE_CHANGED", entity: "User", entityId: id, metadata: { previousRole: target.role, newRole: role } } });
