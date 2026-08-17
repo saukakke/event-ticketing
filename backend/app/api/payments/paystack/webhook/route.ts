@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { finalizePaystackOrder, releaseReservedStock } from "@/lib/order-payment";
-import { prisma } from "@/lib/db";
+import { finalizePaystackOrder, handlePaystackReversal } from "@/lib/order-payment";
 import { verifyPaystackWebhookSignature } from "@/lib/paystack";
 
 export async function POST(request: NextRequest) {
@@ -24,8 +23,7 @@ export async function POST(request: NextRequest) {
     if (payload.event === "charge.success") {
       await finalizePaystackOrder(reference);
     } else if (payload.event === "charge.failed" || payload.event === "charge.reversed") {
-      const order = await prisma.order.findUnique({ where: { paymentReference: reference }, select: { id: true } });
-      if (order) await releaseReservedStock(order.id);
+      await handlePaystackReversal(reference);
     }
 
     return NextResponse.json({ received: true });
