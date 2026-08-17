@@ -4,7 +4,7 @@
 
 ## Scope
 
-The audit covered the repository structure, frontend route architecture, backend API groups, Prisma schema/migrations, authentication, payment flow, checkout behavior, Docker configuration, CI configuration, tests and project documentation.
+The audit covers the repository structure, frontend route architecture, backend API groups, Prisma schema/migrations, authentication, payment flow, checkout behavior, Docker configuration, CI configuration, tests, environment configuration and project documentation.
 
 ## Findings and corrections
 
@@ -20,75 +20,65 @@ The application code and migration history use the following fields:
 - `Refund` with a unique `orderId`
 - `AuditLog.actorId` as a required relationship
 
-The checked-in `schema.prisma` instead contained incompatible names such as `capacity`, `soldCount`, `paystackReference` and `qrCodeDataUrl`, plus fields/indexes that were not represented by the migration history. This would cause generated Prisma Client types to disagree with runtime queries.
+The checked-in `schema.prisma` was previously incompatible with runtime field names and migration history.
 
-**Correction:** `backend/prisma/schema.prisma` was aligned with the application code and the final migration state.
+**Correction:** `backend/prisma/schema.prisma` was aligned with the application code and final migration state.
 
 ### 2. Event detail inventory contract — corrected
 
-The frontend event detail component and backend order flow use `quantity` and `quantityRemaining`. The frontend API types were corrected to match that contract.
+The frontend event detail component and backend order flow use `quantity` and `quantityRemaining`. The frontend API types now match that contract.
 
-The route `/events/:id` remains ID-based, which matches the backend `GET /events/:id` implementation.
+The route `/events/:id` remains ID-based, matching the backend `GET /events/:id` implementation.
 
 ### 3. Checkout redirect contract — corrected
 
-The backend `POST /orders` returns `orderId`, `reference` and a Paystack `authorizationUrl`. The frontend previously treated the response as if it contained `id` and redirected to a dashboard URL without starting payment.
+The backend `POST /orders` returns `orderId`, `reference` and a Paystack `authorizationUrl`.
 
-**Correction:** the event detail page now redirects to the Paystack authorization URL. If the backend confirms payment immediately, it uses the payment-return flow instead.
+**Correction:** the event detail page redirects to the Paystack authorization URL and uses the payment-return flow only when the backend confirms payment immediately.
 
 ### 4. Event detail 404 handling — corrected
 
-The frontend event detail page previously tried to identify a 404 by searching for `"(404)"` in the error message, while the API helper returned only the backend error message.
-
-**Correction:** `frontend/lib/api.ts` now exposes a typed `ApiError` containing the HTTP status, and the event detail page calls `notFound()` for status `404` only.
+The frontend now uses the typed `ApiError.status` returned by the API helper and calls `notFound()` only for HTTP 404 responses.
 
 ### 5. Frontend password validation — corrected
 
-The backend requires passwords to contain at least 12 characters, while the frontend form previously advertised only an 8-character minimum.
-
-**Correction:** the frontend now uses the same 12-character minimum and appropriate password autocomplete attributes.
+The frontend and backend now enforce the same 12-character minimum password length.
 
 ### 6. Backend Docker build — corrected
 
-The backend Dockerfile attempted to copy `/app/public`, but the backend service has no tracked `public` directory. It also used a wildcard `package-lock.json*` even though the repository has no committed lockfile.
-
-**Correction:** the backend Docker build now copies only `package.json` and does not copy a nonexistent `public` directory or lockfile.
+The backend Dockerfile no longer assumes a backend `public` directory or a committed lockfile that does not exist.
 
 ### 7. Event list error handling — corrected
 
-The events page previously swallowed backend errors and displayed the same empty state used for a valid search with no results.
-
-**Correction:** backend failures now display a distinct error state, while a successful empty search still displays the empty-results state.
+Backend failures on `/events` are now displayed separately from a valid empty search result.
 
 ### 8. Administrator navigation and logout — corrected
 
-The authenticated header exposed organizer navigation to administrators but did not expose the administrator dashboard. Logout also did not guarantee local cleanup when the API call failed.
-
-**Correction:** administrators now have an `/admin` navigation entry and logout always clears local UI state and redirects.
+Administrator navigation includes the admin dashboard, and logout cleanup is handled even when the logout request fails.
 
 ### 9. Documentation drift — corrected
 
-The previous documentation contained outdated information, including:
-
-- an obsolete backend base URL/port in the API guide;
-- a `NEXT_PUBLIC_API_URL` deployment variable that is not used by the current frontend;
-- a `seed.ts` path although the repository contains `seed.js`;
-- demo credentials that did not match the seed script;
-- a database description that omitted refunds and audit logs;
-- an API guide that described order creation as a demo-paid operation rather than the current Paystack initialization flow;
-- a README reference to a missing `docs/AUDIT.md`.
-
-**Corrections:** README, API, architecture, database, deployment, security, capstone, decisions and testing documentation were updated, and this audit document was added.
+The README and supporting documentation were updated to reflect the current Paystack flow, route structure, seed credentials, schema, deployment variables and migration state.
 
 ### 10. Migration history review
 
-The repository contains the original schema migration plus later management, payment/ticket and user-account-control migrations. The final migration state includes account suspension and soft deletion, so the Prisma schema now retains those fields.
+Historical migrations are preserved and should not be rewritten after deployment. Future schema changes should be introduced as new migrations.
 
-The repository also contains rollback-style account-control migrations followed by a restore migration. These are preserved as historical migrations rather than edited in place.
+The migration history includes management indexes, platform-management changes and user-account-control changes followed by restore operations. The checked-in Prisma schema represents the final state rather than rewriting those historical migrations.
 
-Existing migration files should not be rewritten after they have been applied to shared or production databases. Future schema changes should be introduced as new migrations.
+### 11. Event pagination input — corrected
 
-## Current architecture verified
+The public events endpoint previously converted `page` and `limit` query parameters directly with `Number()`. Values such as `page=abc` produced `NaN`, which could reach Prisma `skip`/`take` arguments.
+
+**Correction:** `backend/app/api/events/route.ts` now accepts only positive safe integers, applies sensible defaults and caps the values before querying Prisma.
+
+### 12. Workspace environment configuration — corrected
+
+The repository has separate Next.js `frontend` and `backend` applications. Relying on a single root `.env` is ambiguous because each application runs with its own project directory.
+
+**Correction:** `backend/.env.example` was added and the service-specific environment model is documented. The frontend already has `frontend/.env.example`.
+
+## Current architecture
 
 ```text
 Frontend Next.js
@@ -126,10 +116,12 @@ Backend ─────────────── Paystack API/Webhook
 - `/organizer/orders`
 - `/organizer/orders/[id]`
 - `/organizer/tickets`
+- `/organizer/tickets/[id]`
 - `/organizer/payments`
 - `/organizer/check-in`
 - `/admin`
 - `/admin/users`
+- `/admin/users/[id]`
 - `/admin/orders`
 - `/admin/tickets`
 - `/admin/payments`
@@ -149,7 +141,7 @@ Backend ─────────────── Paystack API/Webhook
 
 ## Security review
 
-The implementation contains the following relevant controls:
+The implementation contains these relevant controls:
 
 - HTTP-only session cookies.
 - Secure production cookies using the `__Host-` cookie prefix.
@@ -162,7 +154,7 @@ The implementation contains the following relevant controls:
 - Paystack HMAC-SHA512 webhook verification.
 - Payment reference, amount and currency verification.
 - Idempotent payment finalization.
-- Inventory restoration for failed/reversed pending payments.
+- Inventory restoration for failed/reversed payments.
 - Server-only Paystack secret.
 
 ## Verification status
@@ -176,12 +168,14 @@ The implementation contains the following relevant controls:
 - Payment reference and QR field naming.
 - Seed credential values.
 - Dockerfile filesystem assumptions.
-- Documentation links and deployment variable names.
-- Error handling contracts for event detail and event-list failures.
+- Documentation route and deployment-variable consistency.
+- Event-detail and event-list error handling.
+- Event-list pagination input handling.
+- Service-specific environment templates.
 
 ### Still requires runtime verification
 
-The GitHub connector does not provide a local Node/PostgreSQL runtime for this audit. The following should be executed in CI or a local checkout before final production sign-off:
+The GitHub connector does not provide a local Node/PostgreSQL runtime for this audit. The following must be executed in CI or a local checkout before final production sign-off:
 
 1. `npm install`
 2. `npm run db:generate`
@@ -189,16 +183,17 @@ The GitHub connector does not provide a local Node/PostgreSQL runtime for this a
 4. `npm test`
 5. `npm run build`
 6. Build both Docker images.
-7. Run the frontend and backend together.
+7. Run frontend and backend together using service-specific `.env` files.
 8. Open `/events` and `/events/:id` in a browser.
 9. Complete a Paystack Test Mode payment.
 10. Verify the callback and webhook paths.
 11. Verify ticket QR issuance and check-in.
 12. Verify organizer ownership and admin authorization.
 13. Verify suspended/soft-deleted account behavior.
+14. Verify malformed pagination parameters such as `?page=abc&limit=xyz` fall back safely.
 
 ## Release assessment
 
-The significant source-level blockers found during the audit were the Prisma schema mismatch, frontend/backend ticket inventory contract mismatch, broken event checkout redirect, incorrect 404 detection, frontend password-rule mismatch, stale documentation and backend Docker filesystem/lockfile assumptions.
+The major source-level blockers found during the audit have been corrected, including schema drift, frontend/backend inventory-contract mismatch, broken event checkout redirect, incorrect 404 detection, password-rule mismatch, stale documentation, Docker filesystem assumptions, workspace environment ambiguity and malformed pagination handling.
 
-Those source-level issues have been corrected. The project should still pass the complete CI/build/browser/payment verification sequence above before being treated as fully production-verified.
+The repository is **source-audited but not runtime-certified** until the complete CI/build/browser/payment verification sequence succeeds.
