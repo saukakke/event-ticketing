@@ -4,6 +4,8 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
+const MIN_PASSWORD_LENGTH = 12;
+
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,9 +37,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <h1 style={{ fontSize: "2.5rem" }}>{mode === "login" ? "Sign in" : "Create your account"}</h1>
         <p>{mode === "login" ? "Access your tickets and organizer tools." : "Create an attendee account and start booking events."}</p>
         {mode === "register" && <div className="field"><label htmlFor="name">Full name</label><input id="name" required value={name} onChange={(e) => setName(e.target.value)} /></div>}
-        <div className="field"><label htmlFor="email">Email</label><input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="field"><label htmlFor="password">Password</label><input id="password" type="password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-        {error && <p className="error">{error}</p>}
+        <div className="field"><label htmlFor="email">Email</label><input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+        <div className="field"><label htmlFor="password">Password</label><input id="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={MIN_PASSWORD_LENGTH} required value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+        {error && <p className="error" role="alert">{error}</p>}
         <button className="btn btn-primary" style={{ width: "100%" }} disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         <p style={{ textAlign: "center" }}>{mode === "login" ? "New here? " : "Already have an account? "}<Link href={mode === "login" ? "/register" : "/login"} style={{ color: "var(--brand-dark)", fontWeight: 800 }}>{mode === "login" ? "Create an account" : "Sign in"}</Link></p>
       </form>
