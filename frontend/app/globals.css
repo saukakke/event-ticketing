@@ -72,6 +72,7 @@ p { color: var(--muted); }
 .event-date { background: rgba(255,255,255,.92); color: var(--ink); border-radius: 12px; width: 56px; padding: 7px; text-align: center; font-weight: 900; line-height: 1.05; }
 .event-date small { display:block; font-size:.65rem; text-transform:uppercase; }
 .event-body { padding: 20px; }
+.event-body h3 { min-height: 2.592em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .meta { color: var(--muted); font-size: .9rem; display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .event-body > p { height: 4.65em; margin: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
 .price { margin-top: 16px; font-weight: 900; }
