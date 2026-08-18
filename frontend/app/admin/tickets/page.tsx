@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { api, formatDate } from "@/lib/api";
 
 type Ticket = {
@@ -48,7 +49,18 @@ export default function AdminTickets() {
     if (status === ticket.status) return;
 
     const action = status === "VOID" ? "void" : "activate";
-    if (!window.confirm(`Are you sure you want to ${action} ticket ${ticket.code}?`)) return;
+    const confirmation = await Swal.fire({
+      title: `${action === "void" ? "Void" : "Activate"} this ticket?`,
+      text: `Ticket ${ticket.code} will be ${action}d.`,
+      icon: action === "void" ? "warning" : "question",
+      showCancelButton: true,
+      confirmButtonText: action === "void" ? "Yes, void ticket" : "Yes, activate ticket",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
 
     setUpdating(ticket.id);
     setMessage("");
@@ -61,9 +73,23 @@ export default function AdminTickets() {
         }),
       });
       setMessage(`Ticket ${ticket.code} is now ${status}.`);
+      await Swal.fire({
+        title: "Ticket updated",
+        text: `Ticket ${ticket.code} is now ${status}.`,
+        icon: "success",
+        timer: 1800,
+        showConfirmButton: false,
+      });
       await load();
     } catch (value) {
-      setMessage(value instanceof Error ? value.message : "Unable to update ticket status.");
+      const detail = value instanceof Error ? value.message : "Unable to update ticket status.";
+      setMessage(detail);
+      await Swal.fire({
+        title: "Unable to update ticket",
+        text: detail,
+        icon: "error",
+        confirmButtonText: "Close",
+      });
     } finally {
       setUpdating(null);
     }
