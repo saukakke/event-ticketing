@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { api, formatDate, formatNaira } from "@/lib/api";
 
 type UserDetail = {
@@ -33,15 +34,42 @@ export default function AdminUserDetails({ params }: { params: Promise<{ id: str
 
   async function changeRole(role: UserDetail["role"]) {
     if (!user || role === user.role) return;
-    if (!window.confirm(`Change ${user.name}'s role to ${role}?`)) return;
+
+    const confirmation = await Swal.fire({
+      title: "Change user role?",
+      text: `Change ${user.name}'s role to ${role}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Change role",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
+
     setSaving(true);
     setError("");
     try {
       const { id } = await params;
       const updated = await api<UserDetail>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify({ role }) });
       setUser((current) => current ? { ...current, ...updated } : updated);
+      await Swal.fire({
+        title: "Role updated",
+        text: `${user.name}'s role is now ${role}.`,
+        icon: "success",
+        timer: 1800,
+        showConfirmButton: false,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update role.");
+      const detail = err instanceof Error ? err.message : "Unable to update role.";
+      setError(detail);
+      await Swal.fire({
+        title: "Unable to update role",
+        text: detail,
+        icon: "error",
+        confirmButtonText: "Close",
+      });
     } finally {
       setSaving(false);
     }
