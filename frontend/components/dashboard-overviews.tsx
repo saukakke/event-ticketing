@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { api, formatDate, formatNaira, Ticket } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { EventManagementTable } from "@/components/event-management-table";
 
 type Order = {
   id: string;
@@ -102,16 +103,22 @@ export function OrganizerOverview() {
       <DashboardHead eyebrow="Organizer dashboard" title="Manage your events" action="Create event" href="/organizer/new" />
       <ManagementNav organizer />
       <div className="stats"><div className="stat"><span className="meta">Sales</span><strong>{formatNaira(sales)}</strong></div><div className="stat"><span className="meta">Orders</span><strong>{orders}</strong></div><div className="stat"><span className="meta">Tickets sold</span><strong>{tickets}</strong></div></div>
-      {events.length === 0 ? <div className="empty">No events have been created yet.</div> : <div className="table-wrap"><table><thead><tr><th>Event</th><th>Status</th><th>Date</th><th>Orders</th><th>Sales</th></tr></thead><tbody>{events.map((event) => <tr key={event.id}><td><Link href={`/events/${event.id}`}><strong>{event.title}</strong></Link><div className="meta">{event.city}</div></td><td>{event.status}</td><td>{formatDate(event.startAt)}</td><td>{event.ordersCount}</td><td>{formatNaira(event.salesKobo)}</td></tr>)}</tbody></table></div>}
+      {events.length === 0 ? <div className="empty">No events have been created yet.</div> : <EventManagementTable initialEvents={events} role="ORGANIZER" />}
     </div></main>
   );
 }
 
 export function AdminOverview() {
   const [data, setData] = useState<any>();
+  const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [error, setError] = useState("");
 
-  useEffect(() => { void api<any>("/admin/overview").then(setData).catch((e) => setError(e instanceof Error ? e.message : "Unable to load admin overview.")); }, []);
+  useEffect(() => {
+    Promise.all([api<any>("/admin/overview"), api<OrganizerEvent[]>("/organizer/events")])
+      .then(([overview, managedEvents]) => { setData(overview); setEvents(managedEvents); })
+      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load admin overview."));
+  }, []);
+
   if (error) return <DashboardError title="Unable to load admin overview" message={error} />;
   if (!data) return <main className="dashboard"><div className="container"><div className="empty">Loading admin dashboard…</div></div></main>;
 
@@ -121,6 +128,10 @@ export function AdminOverview() {
       <DashboardHead eyebrow="Administration" title="Platform overview" />
       <ManagementNav admin />
       <div className="stats"><div className="stat"><span className="meta">Users</span><strong>{m.users}</strong></div><div className="stat"><span className="meta">Organizers</span><strong>{m.organizers}</strong></div><div className="stat"><span className="meta">Events</span><strong>{m.events}</strong></div><div className="stat"><span className="meta">Orders</span><strong>{m.orders}</strong></div><div className="stat"><span className="meta">Tickets</span><strong>{m.tickets}</strong></div><div className="stat"><span className="meta">Gross revenue</span><strong>{formatNaira(m.grossRevenueKobo)}</strong></div><div className="stat"><span className="meta">Refunded</span><strong>{formatNaira(m.refundedKobo)}</strong></div><div className="stat"><span className="meta">Net revenue</span><strong>{formatNaira(m.netRevenueKobo)}</strong></div></div>
+      <section className="panel" style={{ marginBottom: 18 }}>
+        <div className="section-head"><div><div className="eyebrow">Event management</div><h2>All events</h2></div><Link className="btn btn-secondary" href="/events">Public events</Link></div>
+        {events.length === 0 ? <div className="empty">No events are available.</div> : <EventManagementTable initialEvents={events} role="ADMIN" />}
+      </section>
       {data.recentOrders?.length ? <div className="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Event</th><th>Status</th><th>Amount</th><th>Date</th></tr></thead><tbody>{data.recentOrders.map((o: any) => <tr key={o.id}><td>{o.id}</td><td>{o.user.name}<div className="meta">{o.user.email}</div></td><td>{o.event.title}</td><td>{o.status}</td><td>{formatNaira(o.totalKobo)}</td><td>{formatDate(o.createdAt)}</td></tr>)}</tbody></table></div> : <div className="empty">No orders have been recorded yet.</div>}
     </div></main>
   );
