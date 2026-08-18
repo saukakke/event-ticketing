@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { api, formatDate, formatNaira } from "@/lib/api";
 
 type Order = { id: string; status: string; totalKobo: number; currency: string; paymentReference?: string | null; createdAt: string; updatedAt: string; user: { name: string; email: string }; event: { title: string; venue: string; city: string; startAt: string; endAt: string }; items: { id: string; quantity: number; unitPriceKobo: number; ticketType: { name: string } }[]; tickets: { id: string; code: string; checkedIn: boolean; checkedInAt?: string | null; createdAt: string; ticketType: { name: string }; status?: string }[] };
@@ -10,10 +11,50 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
   const [order, setOrder] = useState<Order | null>(null); const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
   const load = (id: string) => api<Order>(`/organizer/orders/${id}`).then(setOrder).catch((e) => setError(e instanceof Error ? e.message : "Unable to load order."));
   useEffect(() => { params.then(({ id }) => load(id)); }, [params]);
-  async function refund() { if (!order || !window.confirm("Refund this entire paid order through Paystack? This will void its tickets and restore inventory.")) return; setBusy(true); setMessage(""); try { await api(`/organizer/refunds`, { method: "POST", body: JSON.stringify({ orderId: order.id }) }); setMessage("Refund processed successfully. The tickets have been voided."); await load(order.id); } catch (e) { setMessage(e instanceof Error ? e.message : "Refund failed."); } finally { setBusy(false); } }
+
+  async function refund() {
+    if (!order) return;
+
+    const confirmation = await Swal.fire({
+      title: "Refund this order?",
+      text: "This will refund the entire paid order through Paystack, void its tickets and restore ticket inventory.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, refund order",
+      cancelButtonText: "Keep order",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    setBusy(true); setMessage("");
+    try {
+      await api(`/organizer/refunds`, { method: "POST", body: JSON.stringify({ orderId: order.id }) });
+      setMessage("Refund processed successfully. The tickets have been voided.");
+      await Swal.fire({
+        title: "Refund processed",
+        text: "The refund was processed successfully and the tickets have been voided.",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      await load(order.id);
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : "Refund failed.";
+      setMessage(detail);
+      await Swal.fire({
+        title: "Refund failed",
+        text: detail,
+        icon: "error",
+        confirmButtonText: "Close",
+      });
+    } finally { setBusy(false); }
+  }
+
   if (error) return <main className="container section"><div className="empty"><h2>Unable to load order</h2><p>{error}</p><Link className="btn btn-primary" href="/organizer/orders">Back to orders</Link></div></main>;
   if (!order) return <main className="container section"><p>Loading order…</p></main>;
-  return <main className="dashboard"><div className="container"><div className="dashboard-head"><div><div className="eyebrow">Order details</div><h1>{order.id}</h1></div><div style={{display:"flex",gap:".75rem"}}><Link className="btn btn-secondary" href="/organizer/orders">Back to orders</Link>{order.status === "PAID" && <button className="btn btn-secondary" onClick={refund} disabled={busy}>{busy?"Processing…":"Refund order"}</button>}</div></div>{message&&<div className="empty" style={{marginBottom:"1rem"}}><p>{message}</p></div>}
+  return <main className="dashboard"><div className="container"><div className="dashboard-head"><div><div className="eyebrow">Order details</div><h1>{order.id}</h1></div><div style={{display:"flex",gap:".75rem"}}><Link className="btn btn-secondary" href="/organizer/orders">Back to orders</Link>{order.status === "PAID" && <button className="btn btn-secondary" onClick={() => void refund()} disabled={busy}>{busy?"Processing…":"Refund order"}</button>}</div></div>{message&&<div className="empty" style={{marginBottom:"1rem"}}><p>{message}</p></div>}
     <div className="stats"><div className="stat"><span className="meta">Status</span><strong>{order.status}</strong></div><div className="stat"><span className="meta">Total</span><strong>{formatNaira(order.totalKobo)}</strong></div><div className="stat"><span className="meta">Tickets</span><strong>{order.tickets.length}</strong></div></div>
     <div className="grid grid-2"><section className="card"><div className="eyebrow">Customer</div><h2>{order.user.name}</h2><p>{order.user.email}</p><div className="eyebrow">Payment reference</div><p>{order.paymentReference || "Not available"}</p><div className="eyebrow">Placed</div><p>{formatDate(order.createdAt)}</p></section><section className="card"><div className="eyebrow">Event</div><h2>{order.event.title}</h2><p>{order.event.venue}, {order.event.city}</p><p>{formatDate(order.event.startAt)} – {formatDate(order.event.endAt)}</p></section></div>
     <section className="card"><div className="eyebrow">Order items</div><div className="table-wrap"><table><thead><tr><th>Ticket type</th><th>Quantity</th><th>Unit price</th><th>Total</th></tr></thead><tbody>{order.items.map((item) => <tr key={item.id}><td>{item.ticketType.name}</td><td>{item.quantity}</td><td>{formatNaira(item.unitPriceKobo)}</td><td>{formatNaira(item.unitPriceKobo * item.quantity)}</td></tr>)}</tbody></table></div></section>
