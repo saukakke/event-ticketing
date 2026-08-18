@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { api, formatDate } from "@/lib/api";
 
 type User = {
@@ -10,13 +11,26 @@ type User = {
   _count: { events: number; orders: number; auditLogs: number };
 };
 type Response = { users: User[]; pagination: { page: number; pageSize: number; total: number; pages: number } };
-
 type AccountStatus = "ACTIVE" | "SUSPENDED" | "DELETED" | "ALL";
 
 function statusOf(user: User): Exclude<AccountStatus, "ALL"> {
   if (user.deletedAt) return "DELETED";
   if (user.suspendedAt) return "SUSPENDED";
   return "ACTIVE";
+}
+
+async function confirmAction(title: string, text: string, confirmButtonText: string) {
+  const result = await Swal.fire({
+    title,
+    text,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText,
+    cancelButtonText: "Cancel",
+    reverseButtons: true,
+    focusCancel: true,
+  });
+  return result.isConfirmed;
 }
 
 export default function AdminUsers() {
@@ -41,23 +55,37 @@ export default function AdminUsers() {
   useEffect(() => { void load(); }, [role, status]);
 
   async function changeRole(user: User, nextRole: User["role"]) {
-    if (nextRole === user.role || !window.confirm(`Change ${user.name}'s role to ${nextRole}?`)) return;
+    if (nextRole === user.role) return;
+    if (!(await confirmAction("Change user role?", `Change ${user.name}'s role to ${nextRole}?`, "Change role"))) return;
     setSaving(user.id); setError(""); setMessage("");
-    try { await api(`/admin/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ role: nextRole }) }); setMessage(`${user.name}'s role was updated.`); await load(); }
-    catch (err) { setError(err instanceof Error ? err.message : "Unable to update role."); }
+    try {
+      await api(`/admin/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ role: nextRole }) });
+      setMessage(`${user.name}'s role was updated.`); await load();
+      await Swal.fire({ title: "Role updated", text: `${user.name}'s role was updated successfully.`, icon: "success", timer: 1800, showConfirmButton: false });
+    } catch (err) { setError(err instanceof Error ? err.message : "Unable to update role."); await Swal.fire("Unable to update role", err instanceof Error ? err.message : "An unexpected error occurred.", "error"); }
     finally { setSaving(null); }
   }
 
   async function accountAction(user: User, action: "suspend" | "restore" | "delete" | "undelete") {
     const labels = { suspend: "suspend", restore: "restore", delete: "soft-delete", undelete: "restore from soft-delete" } as const;
-    if (!window.confirm(`Are you sure you want to ${labels[action]} ${user.name}'s account?`)) return;
+    const confirmed = await confirmAction(
+      action === "delete" ? "Soft-delete this account?" : `Confirm ${labels[action]}`,
+      `Are you sure you want to ${labels[action]} ${user.name}'s account?`,
+      action === "delete" ? "Soft delete" : labels[action].replace(/^./, (c) => c.toUpperCase()),
+    );
+    if (!confirmed) return;
     let reason: string | undefined;
-    if (action === "suspend") reason = window.prompt("Suspension reason (optional):") || undefined;
+    if (action === "suspend") {
+      const result = await Swal.fire({ title: "Suspension reason", input: "textarea", inputLabel: "Reason (optional)", inputPlaceholder: "Enter a reason for suspension...", showCancelButton: true, confirmButtonText: "Continue" });
+      if (!result.isConfirmed) return;
+      reason = typeof result.value === "string" && result.value.trim() ? result.value.trim() : undefined;
+    }
     setSaving(user.id); setError(""); setMessage("");
     try {
       await api(`/admin/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ action, ...(reason ? { reason } : {}) }) });
       setMessage(`${user.name}'s account was ${labels[action]}.`); await load();
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to update account status."); }
+      await Swal.fire({ title: "Account updated", text: `${user.name}'s account was ${labels[action]}.`, icon: "success", timer: 1800, showConfirmButton: false });
+    } catch (err) { const detail = err instanceof Error ? err.message : "Unable to update account status."; setError(detail); await Swal.fire("Unable to update account", detail, "error"); }
     finally { setSaving(null); }
   }
 
