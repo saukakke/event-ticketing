@@ -12,7 +12,7 @@
 [![Paystack](https://img.shields.io/badge/Paystack-Test%20Mode-0BA4DB)](https://paystack.com/)
 [![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=111111)](https://render.com/)
 
-> **Production-Ready Capstone Project — 3MTT NextGen**
+> **Production-Ready Capstone Project — 3MTT Next-Gen Cohort**
 
 EventFlow is a full-stack event ticketing and management platform built by **Yasin Muhammed Tukur**. It covers event discovery, ticket inventory, authenticated ordering, Paystack Test Mode checkout, server-side payment verification, signed webhooks, digital QR tickets, organizer management and administrator controls.
 
@@ -22,7 +22,7 @@ EventFlow is a full-stack event ticketing and management platform built by **Yas
 |---|---|
 | Project | EventFlow — Event Ticketing Platform |
 | Author | Yasin Muhammed Tukur |
-| Program | 3MTT NextGen Capstone |
+| Program | 3MTT Next-Gen Capstone |
 | Repository | https://github.com/saukkake/event-ticketing |
 | Email | saukakke@gmail.com |
 | License | MIT |
@@ -194,7 +194,7 @@ npm run dev
 ```
 
 - Frontend: `http://localhost:3000`
-- Backend: `http://localhost:10000`
+- Backend: `http://localhost:4000`
 
 ## Seeded demo accounts
 
@@ -203,11 +203,14 @@ The seed script creates demo accounts using the same password for demonstration 
 | Role | Email | Password |
 |---|---|---|
 | Organizer | `organizer@eventflow.com` | `Password123!` |
+| Organizer | `organizer@eventflow.local` | `Password123!` |
 | Organizer | `organizer2@eventflow.com` | `Password123!` |
 | Attendee | `attendee@eventflow.com` | `Password123!` |
+| Attendee | `attendee@eventflow.local` | `Password123!` |
 | Attendee | `attendee2@eventflow.com` | `Password123!` |
 | Attendee | `attendee3@eventflow.com` | `Password123!` |
 | Admin | `admin@eventflow.com` | `Password123!` |
+| Admin | `admin@eventflow.local` | `Password123!` |
 
 These credentials are for development/capstone demonstration only. Do not use them in a production environment.
 
@@ -303,6 +306,7 @@ The current capstone deployment is a **Paystack Test Mode** environment and must
 - GitHub: https://github.com/saukkake
 - LinkedIn: https://www.linkedin.com/in/yasin-muhammed-tukur
 - Email: saukakke@gmail.com
+- Phone: 08130144920
 
 ## License
 
@@ -312,4 +316,4 @@ Third-party dependencies retain their respective licenses.
 
 ---
 
-Built by **Yasin Muhammed Tukur** for the **3MTT NextGen** capstone.
+Built by **Yasin Muhammed Tukur** for the **3MTT Next-Gen Cohort** capstone project.
