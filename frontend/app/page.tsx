@@ -77,7 +77,7 @@ export default function HomePage() {
                   </div>
                   <h3>{nextEvent.description}</h3>
                 </div>
-                <Link className="btn btn-primary" href={`/events/${nextEvent.slug}`} style={{ marginTop: 16 }}>
+                <Link className="btn btn-primary" href={`/events/${nextEvent.id}`} style={{ marginTop: 16 }}>
                   View event
                 </Link>
               </>
