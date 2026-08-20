@@ -1,0 +1,17 @@
+services:
+  - type: cron
+    name: event-ticketing-order-cleanup
+    runtime: node
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: npm install
+    startCommand: node scripts/run-render-cron.mjs
+    schedule: "* * * * *"
+    envVars:
+      - key: BACKEND_URL
+        value: https://event-ticketing-backend-yzzr.onrender.com
+      - key: CRON_SECRET
+        sync: false
+      - key: NODE_VERSION
+        value: "22"
