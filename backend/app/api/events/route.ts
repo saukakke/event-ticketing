@@ -17,11 +17,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();
     const city = searchParams.get("city")?.trim();
+    const upcomingOnly = searchParams.get("upcoming") === "true";
     const page = positiveInteger(searchParams.get("page"), 1, 10_000);
     const limit = positiveInteger(searchParams.get("limit"), 12, 30);
 
     const where = {
       status: "PUBLISHED" as const,
+      ...(upcomingOnly ? { startAt: { gte: new Date() } } : {}),
       ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" as const } }, { venue: { contains: q, mode: "insensitive" as const } }] } : {}),
       ...(city ? { city: { equals: city, mode: "insensitive" as const } } : {}),
     };
@@ -30,10 +32,9 @@ export async function GET(request: NextRequest) {
       prisma.event.findMany({
         where,
         include: { ticketTypes: { orderBy: { priceKobo: "asc" }, take: 1 } },
-        // Public listings are shown by creation date so the landing page's
-        // "most recent" section is deterministic and does not depend on the
-        // event date being farthest/nearest in the future.
-        orderBy: [{ createdAt: "desc" }, { startAt: "asc" }],
+        orderBy: upcomingOnly
+          ? [{ startAt: "asc" }]
+          : [{ createdAt: "desc" }, { startAt: "asc" }],
         skip: (page - 1) * limit,
         take: limit,
       }),
