@@ -33,7 +33,8 @@ export default function HomePage() {
 
   useEffect(() => {
     Promise.all([
-      api<{ events: Event[] }>("/events?limit=3"),
+      // The landing page should always display upcoming events in chronological order.
+      api<{ events: Event[] }>("/events?upcoming=true&limit=3"),
       api<{ events: Event[] }>("/events?upcoming=true&limit=1"),
     ])
       .then(([listing, upcoming]) => {
