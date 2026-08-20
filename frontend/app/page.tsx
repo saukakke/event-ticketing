@@ -5,14 +5,41 @@ import { useEffect, useState } from "react";
 import { EventCard } from "@/components/event-card";
 import { api, Event } from "@/lib/api";
 
+function formatEventDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-NG", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date).toUpperCase();
+}
+
+function formatEventTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-NG", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 export default function HomePage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [nextEvent, setNextEvent] = useState<Event | null>(null);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState("");
 
   useEffect(() => {
-    api<{ events: Event[] }>("/events?limit=3")
-      .then((result) => setEvents(result.events ?? []))
+    Promise.all([
+      api<{ events: Event[] }>("/events?limit=3"),
+      api<{ events: Event[] }>("/events?upcoming=true&limit=1"),
+    ])
+      .then(([listing, upcoming]) => {
+        setEvents(listing.events ?? []);
+        setNextEvent(upcoming.events?.[0] ?? null);
+      })
       .catch((error) => setEventsError(error instanceof Error ? error.message : "Unable to load events."))
       .finally(() => setLoadingEvents(false));
   }, []);
@@ -30,14 +57,36 @@ export default function HomePage() {
               <Link className="btn btn-secondary" href="/register">Create an account</Link>
             </div>
           </div>
-          <div className="hero-panel" aria-label="EventFlow product preview">
+          <div className="hero-panel" aria-label="EventFlow next event">
             <div className="eyebrow" style={{ color: "#ff9f89" }}>Your next event</div>
-            <h2 style={{ marginTop: 12 }}>Northern Digital Innovation Summit</h2>
-            <p>ABU Conference Centre · Zaria</p>
-            <div className="event-preview">
-              <div className="event-preview-top"><span>15 OCT 2026</span><span>09:00</span></div>
-              <h3>Technology, AI, entrepreneurship and the future of work.</h3>
-            </div>
+            {loadingEvents ? (
+              <div className="empty" aria-live="polite" style={{ marginTop: 16 }}>Loading the next event…</div>
+            ) : eventsError ? (
+              <div className="empty" role="alert" style={{ marginTop: 16 }}>
+                <h3>Unable to load the next event.</h3>
+                <p>{eventsError}</p>
+              </div>
+            ) : nextEvent ? (
+              <>
+                <h2 style={{ marginTop: 12 }}>{nextEvent.title}</h2>
+                <p>{nextEvent.venue} · {nextEvent.city}</p>
+                <div className="event-preview">
+                  <div className="event-preview-top">
+                    <span>{formatEventDate(nextEvent.startAt)}</span>
+                    <span>{formatEventTime(nextEvent.startAt)}</span>
+                  </div>
+                  <h3>{nextEvent.description}</h3>
+                </div>
+                <Link className="btn btn-primary" href={`/events/${nextEvent.slug}`} style={{ marginTop: 16 }}>
+                  View event
+                </Link>
+              </>
+            ) : (
+              <div className="empty" style={{ marginTop: 16 }}>
+                <h3>No upcoming events</h3>
+                <p>Published events will appear here automatically when they are scheduled.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
