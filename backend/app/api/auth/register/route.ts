@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         name: input.name,
         email: input.email,
         passwordHash,
-        role: "ATTENDEE",
+        role: input.role,
       },
       select: {
         id: true,
